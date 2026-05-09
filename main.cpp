@@ -11,7 +11,7 @@
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "stb_truetype.h"
 
-//Build 0.0.8
+//Build 0.0.9
 // =============================================================
 // CONSTANTS
 // =============================================================
@@ -32,6 +32,11 @@ static const float PUNCH_RANGE    = 80.0f;   // how far the hitbox reaches
 static const float PUNCH_DURATION = 0.25f;   // how long the punch hitbox is active
 static const float PUNCH_COOLDOWN = 0.45f;   // time before next punch
 
+// Loading bar constants
+static const float LOAD_BAR_W     = 480.0f;  // width of the progress bar image
+static const float LOAD_BAR_H     = 32.0f;   // height of the progress bar image
+static const float LOAD_FILL_RATE = 0.55f;   // units/sec — how fast the bar auto-fills
+                                              // Set to 0 to drive it manually from asset loading
 
 // =============================================================
 // FONT
@@ -169,6 +174,39 @@ static void drawImageStretched(Image* img, float x, float y,
     glColor4f(1, 1, 1, 1);
 }
 
+// Draws the progress bar using the two sprite images.
+// fillImg  : fill/color image (progress_bar.png) — clipped to [0, fill]
+// borderImg: border/frame image (progress_border.png) — always drawn at full width on top
+// fill     : 0.0 – 1.0
+static void drawProgressBar(Image* fillImg, Image* borderImg,
+                             float x, float y, float w, float h,
+                             float fill, float alpha = 1.0f)
+{
+    // --- clipped fill drawn first (sits behind the border) ---
+    if (fillImg && fill > 0.0f)
+    {
+        float fw = w * fill;
+        float u1 = fill;   // UV right edge matches the fill ratio
+
+        glEnable(GL_TEXTURE_2D);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glBindTexture(GL_TEXTURE_2D, fillImg->textureID);
+        glColor4f(1.0f, 1.0f, 1.0f, alpha);
+        glBegin(GL_QUADS);
+        glTexCoord2f(0.0f, 0.0f); glVertex2f(x,      y);
+        glTexCoord2f(u1,   0.0f); glVertex2f(x + fw, y);
+        glTexCoord2f(u1,   1.0f); glVertex2f(x + fw, y + h);
+        glTexCoord2f(0.0f, 1.0f); glVertex2f(x,      y + h);
+        glEnd();
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glColor4f(1, 1, 1, 1);
+    }
+
+    // --- border/frame drawn on top at full width always ---
+    drawImageStretched(borderImg, x, y, w, h, alpha);
+}
+
 // =============================================================
 // CAMERA
 // =============================================================
@@ -253,10 +291,10 @@ struct Player
     float aimDirY = 0.0f;
 
     // --- Punch state ---
-    bool  punching       = false;   // currently in punch animation/hitbox window
-    float punchTimer     = 0.0f;   // counts up during active punch
-    float punchCooldown  = 0.0f;   // cooldown between punches
-    bool  punchHit       = false;   // did this punch connect?
+    bool  punching       = false;
+    float punchTimer     = 0.0f;
+    float punchCooldown  = 0.0f;
+    bool  punchHit       = false;
 
     Sprite*           sprite = nullptr;
     TimelineAnimator* anim   = nullptr;
@@ -267,13 +305,10 @@ struct Player
     float muzzleX() const { return x + w * 0.5f; }
     float muzzleY() const { return y + h * 0.5f; }
 
-    // Returns the world-space punch hitbox (extended in facing direction)
     void getPunchHitbox(float& hx, float& hy, float& hw, float& hh) const
     {
         hw = PUNCH_RANGE;
         hh = 50.0f;
-        // facingX is -1 when facing right (sprite flipped), 1 when facing left
-        // We want the hitbox in front of the player
         if (facingX < 0.0f)  // facing right
             hx = x + w;
         else                  // facing left
@@ -356,7 +391,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     enum class GameState { LOADING, PLAYING };
     GameState gameState = GameState::LOADING;
 
-    Image* loadingImage = Playlabs_LoadImage("loading.png");
+    Image* loadingImage  = Playlabs_LoadImage("loading.png");
+    Image* progressBorderImg = Playlabs_LoadImage("progress_border.png");
+    Image* progressBarImg= Playlabs_LoadImage("progress_bar.png");
 
     Sound* loadingMusic = Playlabs_CreateSound();
     loadingMusic->load("loading.wav");
@@ -366,8 +403,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     bool  loadingFadingOut  = false;
     const float FADE_SPEED  = 2.5f;
 
-    float promptPulse = 1.0f;
-    bool prevAnyKeyDown = false;
+    float promptPulse  = 1.0f;
+    bool  prevAnyKeyDown = false;
+
+    // Loading-bar state
+    float loadProgress  = 0.0f;   // 0.0 → 1.0
+    bool  loadComplete  = false;   // true once bar reaches 1.0
 
     // ---------------------------------------------------------
     // Game assets
@@ -382,7 +423,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     sfxJump->load("jump.wav");
 
     Sound* sfxPunch = Playlabs_CreateSound();
-    sfxPunch->load("punch.wav");   // provide your own punch SFX
+    sfxPunch->load("punch.wav");
 
     // ---------------------------------------------------------
     // Player
@@ -416,8 +457,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     std::vector<Bullet> bullets;
     bullets.reserve(64);
 
-    bool prevMouseHeld      = false;
-    bool prevRMouseHeld     = false;  // track right-mouse for punch
+    bool prevMouseHeld  = false;
+    bool prevRMouseHeld = false;
 
     // ==========================================================
     // GAME LOOP
@@ -450,10 +491,24 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
         {
             promptPulse += dt * 1.0f;
 
-            bool anyKeyDown = Playlabs_KeyDown(VK_LBUTTON) ||
-                              Playlabs_KeyDown(VK_RETURN)  ||
-                              Playlabs_KeyDown(VK_SPACE)   ||
-                              Playlabs_KeyDown(VK_ESCAPE);
+            // --- Advance the loading bar ---
+            // Replace this block with actual asset-load progress if desired.
+            if (!loadComplete)
+            {
+                loadProgress += LOAD_FILL_RATE * dt;
+                if (loadProgress >= 1.0f)
+                {
+                    loadProgress = 1.0f;
+                    loadComplete = true;
+                }
+            }
+
+            // Only accept input once the bar is full
+            bool anyKeyDown = loadComplete &&
+                              (Playlabs_KeyDown(VK_LBUTTON) ||
+                               Playlabs_KeyDown(VK_RETURN)  ||
+                               Playlabs_KeyDown(VK_SPACE)   ||
+                               Playlabs_KeyDown(VK_ESCAPE));
 
             bool justPressed = anyKeyDown && !prevAnyKeyDown;
             prevAnyKeyDown   = anyKeyDown;
@@ -476,10 +531,36 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
             Playlabs_Clear(0.0f, 0.0f, 0.0f, 1.0f);
             applyScreenSpace(sw, sh);
 
-            drawImageStretched(loadingImage, 0.0f, 0.0f,
-                               (float)sw, (float)sh, loadingFade);
+            // Loading screen background
+            drawImageStretched(loadingImage, 0.0f, 0.0f, (float)sw, (float)sh, loadingFade);
 
-            if (!loadingFadingOut)
+            // --------------------------------------------------
+            // Progress bar:
+            //   fill   = progress_bar.png    (clipped to loadProgress)
+            //   border = progress_border.png (full width, drawn on top)
+            // --------------------------------------------------
+            {
+                float barW = LOAD_BAR_W;
+                float barH = LOAD_BAR_H;
+                float barX = (sw - barW) * 0.5f;
+                float barY =  sh * 0.82f;
+
+                drawProgressBar(progressBarImg, progressBorderImg,
+                                barX, barY, barW, barH,
+                                loadProgress, loadingFade);
+
+                // Percentage label centred above the bar
+                char pctBuf[16];
+                snprintf(pctBuf, sizeof(pctBuf), "%d%%",
+                         (int)(loadProgress * 100.0f));
+                float labelX = barX + barW * 0.5f - strlen(pctBuf) * 8.0f;
+                float labelY = barY - 6.0f;
+                font.draw(pctBuf, labelX, labelY,
+                          1.0f, 1.0f, 1.0f, 0.85f * loadingFade);
+            }
+
+            // "PRESS ANY KEY" hint — only shown once loading is complete
+            if (!loadingFadingOut && loadComplete)
             {
                 float pulse = (sinf(promptPulse) * 1.5f + 1.5f);
                 float hintA = 0.5f + pulse * 0.5f;
@@ -571,42 +652,33 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
         }
         else
         {
-            // No ammo — cancel any in-progress charge silently
             player.charging    = false;
             player.chargeTimer = 0.0f;
         }
 
         // ------------------------------------------------------
         // RIGHT MOUSE — punch
-        // Allowed always, but only auto-triggered reminder shown
-        // when ammo == 0.  Right-click is available regardless.
         // ------------------------------------------------------
         bool rMouseHeld     = Playlabs_KeyDown(VK_RBUTTON) != 0;
         bool rJustPressed   = rMouseHeld && !prevRMouseHeld;
         prevRMouseHeld      = rMouseHeld;
 
-        // Start a punch on right-click press, not while already punching
         if (rJustPressed && !player.punching && player.punchCooldown <= 0.0f && !player.jumping)
         {
             player.punching   = true;
             player.punchTimer = 0.0f;
             player.punchHit   = false;
 
-            // Play punch animation
             Playlabs_Anim(player.anim, PLAYER, PUNCH);
             player.state = Player::State::PUNCH;
 
             sfxPunch->play(false);
         }
 
-        // Tick active punch
         if (player.punching)
         {
             player.punchTimer += dt;
 
-            // --- Hitbox check against dummy wall/enemy (wX,wY,wW,wH below) ---
-            // This check happens every frame during the active window so we
-            // only register one hit per punch swing.
             float wX = 100.0f, wY = 100.0f, wW = 100.0f, wH = 100.0f;
 
             if (!player.punchHit)
@@ -617,20 +689,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
                 if (Playlabs_AABBIntersects(phx, phy, phw, phh, wX, wY, wW, wH))
                 {
                     player.punchHit = true;
-                    // TODO: apply damage / knockback to the target here
                 }
             }
 
-            // End punch after duration
-            // End punch after duration
-if (player.punchTimer >= PUNCH_DURATION)
-{
-    player.punching      = false;
-    player.punchCooldown = PUNCH_COOLDOWN;
-    // Reset to IDLE — the idle/run state machine below will
-    // immediately correct to RUN if keys are held this frame.
-    player.state = Player::State::IDLE;
-}
+            if (player.punchTimer >= PUNCH_DURATION)
+            {
+                player.punching      = false;
+                player.punchCooldown = PUNCH_COOLDOWN;
+                player.state = Player::State::IDLE;
+            }
         }
 
         // ------------------------------------------------------
@@ -640,7 +707,6 @@ if (player.punchTimer >= PUNCH_DURATION)
         float moveX  = 0.0f;
         float moveY  = 0.0f;
 
-        // Block movement while punching for a snappier feel
         if (!player.punching)
         {
             if (Playlabs_KeyDown(VK_RIGHT) || Playlabs_KeyDown('D')) { moveX =  1.0f; moving = true; }
@@ -695,7 +761,6 @@ if (player.punchTimer >= PUNCH_DURATION)
         player.sprite->scale          = {player.facingX, 1.0f};
         player.sprite->targetScale    = {player.facingX, 1.0f};
 
-        // Idle/Run state transitions (skip if punching or jumping)
         if (!player.jumping && !player.punching)
         {
             if (moving && player.state != Player::State::RUN)
@@ -788,7 +853,6 @@ if (player.punchTimer >= PUNCH_DURATION)
         drawRect(wX, wY, wW, wH, 1.0f, 0.0f, 0.0f, 0.5f);
         drawRect(hitX, hitY, hitW, hitH, 0.0f, 1.0f, 0.5f, 0.5f);
 
-        // --- Draw punch hitbox debug overlay ---
         if (player.punching)
         {
             float phx, phy, phw, phh;
@@ -801,7 +865,6 @@ if (player.punchTimer >= PUNCH_DURATION)
                      flashA);
         }
 
-        // --- Arc preview (only when ammo remains) ---
         if (player.charging && player.ammo > 0)
         {
             float power = MIN_POWER + (MAX_POWER - MIN_POWER) * player.chargeTimer;
@@ -820,14 +883,12 @@ if (player.punchTimer >= PUNCH_DURATION)
         // ==========================================================
         applyScreenSpace(sw, sh);
 
-        // --- Position text ---
         char posText[64];
         snprintf(posText, sizeof(posText), "x: %.1f  y: %.1f", player.x, player.y);
         float tw = (float)strlen(posText) * 16.0f;
         drawRect(12.0f, 12.0f, tw, 36.0f, 0.0f, 0.0f, 0.0f, 0.45f);
         font.draw(posText, 18.0f, 38.0f, 1.0f, 1.0f, 1.0f, 1.0f);
 
-        // --- FPS counter ---
         char fpsText[32];
         snprintf(fpsText, sizeof(fpsText), "FPS: %.1f", currentFPS);
         drawRect((float)sw - 140.0f, 12.0f, 128.0f, 36.0f,
@@ -835,63 +896,46 @@ if (player.punchTimer >= PUNCH_DURATION)
         font.draw(fpsText, (float)sw - 130.0f, 38.0f,
                   0.3f, 1.0f, 0.3f, 1.0f);
 
-        // --- Ammo pips ---
+        // --- Ammo display: centered, number only ---
         {
-            const float pipW   = 22.0f;
-            const float pipH   = 22.0f;
-            const float pipGap =  4.0f;
-            const float ammoX  = 16.0f;
-            const float ammoY  = 60.0f;
-            const float totalW = MAX_AMMO * (pipW + pipGap) - pipGap;
-
-            drawRect(ammoX - 4.0f, ammoY - 28.0f,
-                     totalW + 8.0f, pipH + 36.0f,
-                     0.0f, 0.0f, 0.0f, 0.45f);
-
             bool outOfAmmo = (player.ammo <= 0);
-            font.draw("AMMO",
-                      ammoX, ammoY - 4.0f,
-                      1.0f,
-                      outOfAmmo ? 0.2f : 1.0f,
-                      outOfAmmo ? 0.2f : 1.0f,
+
+            // "AMMO  XX / 100" centered at bottom-center
+            char countBuf[32];
+            snprintf(countBuf, sizeof(countBuf), "AMMO  %d / %d", player.ammo, MAX_AMMO);
+
+            const float charW  = 16.0f;   // approximate glyph advance at size 28
+            float labelW = strlen(countBuf) * charW;
+            float labelX = (sw - labelW) * 0.5f;
+            float labelY = (float)sh - 24.0f;   // near bottom center
+
+            // Dark pill background
+            drawRect(labelX - 14.0f, labelY - 28.0f,
+                     labelW + 28.0f, 40.0f,
+                     0.0f, 0.0f, 0.0f, 0.55f);
+
+            font.draw(countBuf, labelX, labelY,
+                      outOfAmmo ? 1.0f : 1.0f,
+                      outOfAmmo ? 0.2f : 0.9f,
+                      outOfAmmo ? 0.2f : 0.2f,
                       1.0f);
 
-            char countBuf[16];
-            snprintf(countBuf, sizeof(countBuf), "%d / %d", player.ammo, MAX_AMMO);
-            font.draw(countBuf,
-                      ammoX + totalW + 12.0f, ammoY + pipH,
-                      outOfAmmo ? 1.0f : 0.9f,
-                      outOfAmmo ? 0.2f : 0.9f,
-                      outOfAmmo ? 0.2f : 0.9f,
-                      1.0f);
-
-            for (int i = 0; i < MAX_AMMO; ++i)
-            {
-                float px = ammoX + i * (pipW + pipGap);
-                bool  filled = (i < player.ammo);
-                drawRect(px, ammoY, pipW, pipH,
-                         filled ? 1.0f  : 0.2f,
-                         filled ? 0.85f : 0.2f,
-                         filled ? 0.1f  : 0.2f,
-                         1.0f);
-            }
-
-            // "PUNCH MODE" banner when out of ammo
+            // "PUNCH" hint when out of ammo
             if (outOfAmmo)
             {
                 float pulse = fabsf(sinf(promptPulse * 3.0f));
                 const char* punchHint = "[ RIGHT CLICK ] PUNCH";
-                float hintX = ammoX;
-                float hintY = ammoY + pipH + 28.0f;
-                drawRect(hintX - 4.0f, hintY - 22.0f,
-                         strlen(punchHint) * 15.0f + 8.0f, 32.0f,
+                float hintW = strlen(punchHint) * charW;
+                float hintX = (sw - hintW) * 0.5f;
+                float hintY = labelY - 36.0f;
+                drawRect(hintX - 10.0f, hintY - 26.0f,
+                         hintW + 20.0f, 36.0f,
                          0.0f, 0.0f, 0.0f, 0.5f);
                 font.draw(punchHint, hintX, hintY,
                           1.0f, 0.3f + pulse * 0.4f, 0.1f, 1.0f);
             }
         }
 
-        // --- Power bar (only while charging) ---
         if (player.charging && player.ammo > 0)
         {
             const float barW = 200.0f;
@@ -915,7 +959,6 @@ if (player.punchTimer >= PUNCH_DURATION)
             drawRect(barX, barY, barW, 16.0f, 0.15f, 0.15f, 0.15f, 0.9f);
         }
 
-        // --- Punch cooldown bar (shown while cooling down) ---
         if (player.punchCooldown > 0.0f)
         {
             const float barW = 120.0f;
@@ -947,6 +990,8 @@ if (player.punchTimer >= PUNCH_DURATION)
     Playlabs_DestroySound(sfxJump);
     Playlabs_DestroySound(bgm);
     Playlabs_DestroySound(loadingMusic);
+    Playlabs_FreeImage(progressBarImg);
+    Playlabs_FreeImage(progressBorderImg);
     Playlabs_FreeImage(loadingImage);
     Playlabs_FreeAtlas(atlas);
     Playlabs_FreeImage(sheet);

@@ -1,6 +1,6 @@
 {
     "ANIMATION": {
-        "name": "Rubber Band Batlle (1080p) Flash",
+        "name": "Skins",
         "StageInstance": {
             "SYMBOL_Instance": {
                 "SYMBOL_name": "ANIMATION_ANIM_ALL",
@@ -48809,7 +48809,7 @@
                                     "elements": [
                                         {
                                             "ATLAS_SPRITE_instance": {
-                                                "name": "0023",
+                                                "name": "0015",
                                                 "Position": {
                                                     "x": -44,
                                                     "y": 236
@@ -48824,7 +48824,7 @@
                                     "elements": [
                                         {
                                             "ATLAS_SPRITE_instance": {
-                                                "name": "0024",
+                                                "name": "0023",
                                                 "Position": {
                                                     "x": -51,
                                                     "y": 234
@@ -48839,7 +48839,7 @@
                                     "elements": [
                                         {
                                             "ATLAS_SPRITE_instance": {
-                                                "name": "0025",
+                                                "name": "0024",
                                                 "Position": {
                                                     "x": -55,
                                                     "y": 232
@@ -48854,7 +48854,7 @@
                                     "elements": [
                                         {
                                             "ATLAS_SPRITE_instance": {
-                                                "name": "0018",
+                                                "name": "0025",
                                                 "Position": {
                                                     "x": -59,
                                                     "y": 237
