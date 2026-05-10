@@ -5,17 +5,17 @@
 // Compile PlaylabsGL.cpp alongside your other sources.
 // =============================================================
 
-#include "Vec2.h"
-#include "AABB.h"
-#include "Image.h"
-#include "Atlas.h"
-#include "Camera.h"
-#include "Sprite.h"
-#include "Sound.h"
-#include "Input.h"
-#include "Timer.h"
-#include "Window.h"
-#include "TimelineAnimator.h"
+#include "Src/Vec2.h"
+#include "Src/AABB.h"
+#include "Src/Image.h"
+#include "Src/Atlas.h"
+#include "Src/Camera.h"
+#include "Src/Sprite.h"
+#include "Src/Sound.h"
+#include "Src/Input.h"
+#include "Src/Timer.h"
+#include "Src/Window.h"
+#include "Src/TimelineAnimator.h"
 
 extern "C"
 {

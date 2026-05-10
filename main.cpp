@@ -9,7 +9,7 @@
 
 
 #define STB_TRUETYPE_IMPLEMENTATION
-#include "stb_truetype.h"
+#include "include/stb_truetype.h"
 
 //Build 0.0.9
 // =============================================================
@@ -362,7 +362,7 @@ static void drawArcPreview(float ox, float oy,
 // =============================================================
 // ENTRY POINT
 // =============================================================
-int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
+int main()
 {
     Window win;
     if (!win.create("RubberBandBattle-Shell", 1280, 720))
@@ -883,11 +883,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
         // ==========================================================
         applyScreenSpace(sw, sh);
 
-        char posText[64];
-        snprintf(posText, sizeof(posText), "x: %.1f  y: %.1f", player.x, player.y);
-        float tw = (float)strlen(posText) * 16.0f;
-        drawRect(12.0f, 12.0f, tw, 36.0f, 0.0f, 0.0f, 0.0f, 0.45f);
-        font.draw(posText, 18.0f, 38.0f, 1.0f, 1.0f, 1.0f, 1.0f);
 
         char fpsText[32];
         snprintf(fpsText, sizeof(fpsText), "FPS: %.1f", currentFPS);
