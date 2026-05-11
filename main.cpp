@@ -6,12 +6,14 @@
 #include <cmath>
 #include <algorithm>
 #include <windows.h>
-
+#include <iostream>
+#include <cstdint>
+#include <inttypes.h>
 
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "include/stb_truetype.h"
 
-//Build 0.0.9
+//Build 0.0.11
 // =============================================================
 // CONSTANTS
 // =============================================================
@@ -19,24 +21,22 @@ static const float PI             = 3.14159265f;
 static const float BULLET_GRAVITY = 600.0f;
 static const float MIN_POWER      = 200.0f;
 static const float MAX_POWER      = 900.0f;
-static const float CHARGE_RATE    = MAX_POWER / 1.2f;
 static const float SHOOT_COOLDOWN = 0.15f;
 static const float BULLET_LIFETIME= 4.0f;
 static const float ARROW_SIZE     = 12.0f;
 static const int   ARC_SEGMENTS   = 40;
 static const float ARC_STEP_T     = 0.08f;
-static const int   MAX_AMMO       = 100;
+static const int64_t   MAX_AMMO   = 25;
 
 // Punch constants
-static const float PUNCH_RANGE    = 80.0f;   // how far the hitbox reaches
-static const float PUNCH_DURATION = 0.25f;   // how long the punch hitbox is active
-static const float PUNCH_COOLDOWN = 0.45f;   // time before next punch
+static const float PUNCH_RANGE    = 80.0f;
+static const float PUNCH_DURATION = 0.25f;
+static const float PUNCH_COOLDOWN = 0.45f;
 
 // Loading bar constants
-static const float LOAD_BAR_W     = 480.0f;  // width of the progress bar image
-static const float LOAD_BAR_H     = 32.0f;   // height of the progress bar image
-static const float LOAD_FILL_RATE = 0.55f;   // units/sec — how fast the bar auto-fills
-                                              // Set to 0 to drive it manually from asset loading
+static const float LOAD_BAR_W     = 480.0f;
+static const float LOAD_BAR_H     = 32.0f;
+static const float LOAD_FILL_RATE = 0.55f;
 
 // =============================================================
 // FONT
@@ -174,19 +174,14 @@ static void drawImageStretched(Image* img, float x, float y,
     glColor4f(1, 1, 1, 1);
 }
 
-// Draws the progress bar using the two sprite images.
-// fillImg  : fill/color image (progress_bar.png) — clipped to [0, fill]
-// borderImg: border/frame image (progress_border.png) — always drawn at full width on top
-// fill     : 0.0 – 1.0
 static void drawProgressBar(Image* fillImg, Image* borderImg,
                              float x, float y, float w, float h,
                              float fill, float alpha = 1.0f)
 {
-    // --- clipped fill drawn first (sits behind the border) ---
     if (fillImg && fill > 0.0f)
     {
         float fw = w * fill;
-        float u1 = fill;   // UV right edge matches the fill ratio
+        float u1 = fill;
 
         glEnable(GL_TEXTURE_2D);
         glEnable(GL_BLEND);
@@ -203,7 +198,6 @@ static void drawProgressBar(Image* fillImg, Image* borderImg,
         glColor4f(1, 1, 1, 1);
     }
 
-    // --- border/frame drawn on top at full width always ---
     drawImageStretched(borderImg, x, y, w, h, alpha);
 }
 
@@ -282,19 +276,19 @@ struct Player
     float jumpForce = -520.0f;
     bool  jumping   = false;
 
-    bool  charging      = false;
     float chargeTimer   = 0.0f;
     float shootCooldown = 0.0f;
     int   ammo          = MAX_AMMO;
 
+    // aimDir is the FIRE direction (opposite of mouse pull)
     float aimDirX = 1.0f;
     float aimDirY = 0.0f;
 
     // --- Punch state ---
-    bool  punching       = false;
-    float punchTimer     = 0.0f;
-    float punchCooldown  = 0.0f;
-    bool  punchHit       = false;
+    bool  punching      = false;
+    float punchTimer    = 0.0f;
+    float punchCooldown = 0.0f;
+    bool  punchHit      = false;
 
     Sprite*           sprite = nullptr;
     TimelineAnimator* anim   = nullptr;
@@ -309,9 +303,9 @@ struct Player
     {
         hw = PUNCH_RANGE;
         hh = 50.0f;
-        if (facingX < 0.0f)  // facing right
+        if (facingX < 0.0f)
             hx = x + w;
-        else                  // facing left
+        else
             hx = x - hw;
         hy = y + h * 0.2f;
     }
@@ -374,41 +368,36 @@ int main()
 
     Timer timer;
 
-    // FPS counter
     float fpsTimer   = 0.0f;
     int   fpsFrames  = 0;
     float currentFPS = 0.0f;
 
-    // ---------------------------------------------------------
-    // Font
-    // ---------------------------------------------------------
     FontRenderer font;
     font.load("Resources/Font/Confale.ttf", 28.0f);
 
     // ---------------------------------------------------------
-    // Loading screen assets
+    // Loading screen
     // ---------------------------------------------------------
     enum class GameState { LOADING, PLAYING };
     GameState gameState = GameState::LOADING;
 
-    Image* loadingImage  = Playlabs_LoadImage("loading.png");
+    Image* loadingImage      = Playlabs_LoadImage("loading.png");
     Image* progressBorderImg = Playlabs_LoadImage("progress_border.png");
-    Image* progressBarImg= Playlabs_LoadImage("progress_bar.png");
+    Image* progressBarImg    = Playlabs_LoadImage("progress_bar.png");
 
     Sound* loadingMusic = Playlabs_CreateSound();
     loadingMusic->load("loading.wav");
     loadingMusic->play(true);
 
-    float loadingFade       = 10.0f;
-    bool  loadingFadingOut  = false;
-    const float FADE_SPEED  = 2.5f;
+    float loadingFade      = 10.0f;
+    bool  loadingFadingOut = false;
+    const float FADE_SPEED = 2.5f;
 
-    float promptPulse  = 1.0f;
+    float promptPulse    = 1.0f;
     bool  prevAnyKeyDown = false;
 
-    // Loading-bar state
-    float loadProgress  = 0.0f;   // 0.0 → 1.0
-    bool  loadComplete  = false;   // true once bar reaches 1.0
+    float loadProgress = 0.0f;
+    bool  loadComplete = false;
 
     // ---------------------------------------------------------
     // Game assets
@@ -469,7 +458,6 @@ int main()
         float dt = timer.delta();
         if (dt > 0.05f) dt = 0.05f;
 
-        // FPS update
         fpsTimer += dt;
         fpsFrames++;
         if (fpsTimer >= 1.0f)
@@ -491,8 +479,6 @@ int main()
         {
             promptPulse += dt * 1.0f;
 
-            // --- Advance the loading bar ---
-            // Replace this block with actual asset-load progress if desired.
             if (!loadComplete)
             {
                 loadProgress += LOAD_FILL_RATE * dt;
@@ -503,7 +489,6 @@ int main()
                 }
             }
 
-            // Only accept input once the bar is full
             bool anyKeyDown = loadComplete &&
                               (Playlabs_KeyDown(VK_LBUTTON) ||
                                Playlabs_KeyDown(VK_RETURN)  ||
@@ -531,14 +516,8 @@ int main()
             Playlabs_Clear(0.0f, 0.0f, 0.0f, 1.0f);
             applyScreenSpace(sw, sh);
 
-            // Loading screen background
             drawImageStretched(loadingImage, 0.0f, 0.0f, (float)sw, (float)sh, loadingFade);
 
-            // --------------------------------------------------
-            // Progress bar:
-            //   fill   = progress_bar.png    (clipped to loadProgress)
-            //   border = progress_border.png (full width, drawn on top)
-            // --------------------------------------------------
             {
                 float barW = LOAD_BAR_W;
                 float barH = LOAD_BAR_H;
@@ -549,7 +528,6 @@ int main()
                                 barX, barY, barW, barH,
                                 loadProgress, loadingFade);
 
-                // Percentage label centred above the bar
                 char pctBuf[16];
                 snprintf(pctBuf, sizeof(pctBuf), "%d%%",
                          (int)(loadProgress * 100.0f));
@@ -559,15 +537,14 @@ int main()
                           1.0f, 1.0f, 1.0f, 0.85f * loadingFade);
             }
 
-            // "PRESS ANY KEY" hint — only shown once loading is complete
             if (!loadingFadingOut && loadComplete)
             {
                 float pulse = (sinf(promptPulse) * 1.5f + 1.5f);
                 float hintA = 0.5f + pulse * 0.5f;
 
-                const char* hint    = "PRESS ANY KEY TO START";
-                float        hintX  = sw * 0.5f - strlen(hint) * 8.0f;
-                float        hintY  = sh * 0.5f - strlen(hint) * 4.0f;
+                const char* hint  = "PRESS ANY KEY TO START";
+                float        hintX = sw * 0.5f - strlen(hint) * 8.0f;
+                float        hintY = sh * 0.5f - strlen(hint) * 4.0f;
 
                 drawRect(hintX - 16.0f, hintY - 26.0f,
                          strlen(hint) * 16.0f + 32.0f, 38.0f,
@@ -593,75 +570,65 @@ int main()
                       cam, sw, sh,
                       mouseWorldX, mouseWorldY);
 
-        float aimDX = mouseWorldX - player.muzzleX();
-        float aimDY = mouseWorldY - player.muzzleY();
-        float aimLen = sqrtf(aimDX * aimDX + aimDY * aimDY);
-        if (aimLen > 0.001f)
+        // Pull vector: mouse → muzzle (mouse is behind, arc goes forward)
+        float pullDX = mouseWorldX - player.muzzleX();
+        float pullDY = mouseWorldY - player.muzzleY();
+        float pullLen = sqrtf(pullDX * pullDX + pullDY * pullDY);
+
+        // Fire direction = opposite of pull
+        if (pullLen > 0.001f)
         {
-            player.aimDirX = aimDX / aimLen;
-            player.aimDirY = aimDY / aimLen;
+            player.aimDirX = -(pullDX / pullLen);
+            player.aimDirY = -(pullDY / pullLen);
         }
 
-        player.facingX = (player.aimDirX > 0.0f) ? -1.0f : 1.0f;
+        // Face the fire direction
+        player.facingX = (player.aimDirX > 0.0f) ? 1.0f : -1.0f;
 
-        player.shootCooldown  -= dt;
-        player.punchCooldown  -= dt;
+        player.shootCooldown -= dt;
+        player.punchCooldown -= dt;
 
         // ------------------------------------------------------
-        // LEFT MOUSE — shoot (only when ammo > 0)
+        // LEFT MOUSE — shoot on click, power = pull distance
         // ------------------------------------------------------
-        bool mouseHeld    = Playlabs_KeyDown(VK_LBUTTON) != 0;
-        bool justReleased = prevMouseHeld && !mouseHeld;
-        prevMouseHeld     = mouseHeld;
+        bool mouseHeld   = Playlabs_KeyDown(VK_LBUTTON) != 0;
+        bool justPressed = mouseHeld && !prevMouseHeld;
+        prevMouseHeld    = mouseHeld;
 
-        if (player.ammo > 0)
+        if (player.ammo > 0 && justPressed && player.shootCooldown <= 0.0f)
         {
-            if (mouseHeld && player.shootCooldown <= 0.0f)
-            {
-                player.charging    = true;
-                player.chargeTimer += dt * (CHARGE_RATE / MAX_POWER);
-                if (player.chargeTimer > 1.0f) player.chargeTimer = 1.0f;
-            }
+            // Distance mouse is pulled back = launch power
+            float power = pullLen;
 
-            if (justReleased && player.charging)
-            {
-                float power = MIN_POWER + (MAX_POWER - MIN_POWER) * player.chargeTimer;
+            // 0-1 for HUD bar
+            player.chargeTimer = std::min(power / MAX_POWER, 1.0f);
 
-                Bullet b;
-                b.x    = player.muzzleX() - 24.0f;
-                b.y    = player.muzzleY() - 24.0f;
-                b.velX = player.aimDirX * power;
-                b.velY = player.aimDirY * power;
+            Bullet b;
+            b.x    = player.muzzleX() - 24.0f;
+            b.y    = player.muzzleY() - 24.0f;
+            b.velX = player.aimDirX * power;
+            b.velY = player.aimDirY * power;
 
-                b.sprite              = Playlabs_CreateSprite();
-                b.sprite->image       = sheet;
-                b.sprite->atlas       = atlas;
-                b.sprite->frameName   = "0000";
-                b.sprite->scale       = {player.facingX, 1.0f};
-                b.sprite->targetScale = {player.facingX, 1.0f};
-                b.sprite->position      = {b.x, b.y};
-                b.sprite->targetPosition = {b.x, b.y};
+            b.sprite              = Playlabs_CreateSprite();
+            b.sprite->image       = sheet;
+            b.sprite->atlas       = atlas;
+            b.sprite->frameName   = "0000";
+            b.sprite->scale       = {player.facingX, 1.0f};
+            b.sprite->targetScale = {player.facingX, 1.0f};
+            b.sprite->position      = {b.x, b.y};
+            b.sprite->targetPosition = {b.x, b.y};
 
-                bullets.push_back(b);
-                player.ammo--;
-
-                player.charging    = false;
-                player.chargeTimer = 0.0f;
-                player.shootCooldown = SHOOT_COOLDOWN;
-            }
-        }
-        else
-        {
-            player.charging    = false;
-            player.chargeTimer = 0.0f;
+            bullets.push_back(b);
+            player.ammo--;
+            player.shootCooldown = SHOOT_COOLDOWN;
         }
 
         // ------------------------------------------------------
         // RIGHT MOUSE — punch
         // ------------------------------------------------------
-        bool rMouseHeld     = Playlabs_KeyDown(VK_RBUTTON) != 0;
-        bool rJustPressed   = rMouseHeld && !prevRMouseHeld;
-        prevRMouseHeld      = rMouseHeld;
+        bool rMouseHeld   = Playlabs_KeyDown(VK_RBUTTON) != 0;
+        bool rJustPressed = rMouseHeld && !prevRMouseHeld;
+        prevRMouseHeld    = rMouseHeld;
 
         if (rJustPressed && !player.punching && player.punchCooldown <= 0.0f && !player.jumping)
         {
@@ -687,9 +654,7 @@ int main()
                 player.getPunchHitbox(phx, phy, phw, phh);
 
                 if (Playlabs_AABBIntersects(phx, phy, phw, phh, wX, wY, wW, wH))
-                {
                     player.punchHit = true;
-                }
             }
 
             if (player.punchTimer >= PUNCH_DURATION)
@@ -865,16 +830,23 @@ int main()
                      flashA);
         }
 
-        if (player.charging && player.ammo > 0)
+        // Arc preview — mouse behind, arc shoots forward
+        if (player.ammo > 0)
         {
-            float power = MIN_POWER + (MAX_POWER - MIN_POWER) * player.chargeTimer;
-            float t  = player.chargeTimer;
+            float t  = std::min(pullLen / MAX_POWER, 1.0f);
             float pr = 0.2f + t * 0.8f;
             float pg = 0.8f - t * 0.6f;
             float pb = 1.0f - t * 1.0f;
+
+            // Draw pull line: muzzle → mouse (rubber-band visual)
+            drawLine(player.muzzleX(), player.muzzleY(),
+                     mouseWorldX, mouseWorldY,
+                     0.9f, 0.7f, 0.2f, 0.6f, 1.5f);
+
+            // Draw arc forward (opposite of mouse)
             drawArcPreview(player.muzzleX(), player.muzzleY(),
-                           player.aimDirX * power,
-                           player.aimDirY * power,
+                           player.aimDirX * pullLen,
+                           player.aimDirY * pullLen,
                            pr, pg, pb);
         }
 
@@ -883,7 +855,6 @@ int main()
         // ==========================================================
         applyScreenSpace(sw, sh);
 
-
         char fpsText[32];
         snprintf(fpsText, sizeof(fpsText), "FPS: %.1f", currentFPS);
         drawRect((float)sw - 140.0f, 12.0f, 128.0f, 36.0f,
@@ -891,20 +862,18 @@ int main()
         font.draw(fpsText, (float)sw - 130.0f, 38.0f,
                   0.3f, 1.0f, 0.3f, 1.0f);
 
-        // --- Ammo display: centered, number only ---
+        // Ammo display
         {
             bool outOfAmmo = (player.ammo <= 0);
 
-            // "AMMO  XX / 100" centered at bottom-center
             char countBuf[32];
             snprintf(countBuf, sizeof(countBuf), "AMMO  %d / %d", player.ammo, MAX_AMMO);
 
-            const float charW  = 16.0f;   // approximate glyph advance at size 28
+            const float charW = 16.0f;
             float labelW = strlen(countBuf) * charW;
             float labelX = (sw - labelW) * 0.5f;
-            float labelY = (float)sh - 24.0f;   // near bottom center
+            float labelY = (float)sh - 24.0f;
 
-            // Dark pill background
             drawRect(labelX - 14.0f, labelY - 28.0f,
                      labelW + 28.0f, 40.0f,
                      0.0f, 0.0f, 0.0f, 0.55f);
@@ -915,7 +884,6 @@ int main()
                       outOfAmmo ? 0.2f : 0.2f,
                       1.0f);
 
-            // "PUNCH" hint when out of ammo
             if (outOfAmmo)
             {
                 float pulse = fabsf(sinf(promptPulse * 3.0f));
@@ -931,13 +899,15 @@ int main()
             }
         }
 
-        if (player.charging && player.ammo > 0)
+        // Power bar
+        if (player.ammo > 0)
         {
+            float t  = std::min(pullLen / MAX_POWER, 1.0f);
+
             const float barW = 200.0f;
             float barX = (sw - barW) * 0.5f;
             float barY =  sh - 52.0f;
 
-            float t  = player.chargeTimer;
             float pr = 0.2f + t * 0.8f;
             float pg = 0.8f - t * 0.6f;
             float pb = 1.0f - t * 1.0f;
@@ -945,13 +915,11 @@ int main()
             drawRect(barX - 4.0f, barY - 30.0f, barW + 8.0f, 52.0f,
                      0.0f, 0.0f, 0.0f, 0.45f);
             drawRect(barX, barY, barW, 16.0f, 0.15f, 0.15f, 0.15f, 0.9f);
-            drawRect(barX, barY, barW * player.chargeTimer, 16.0f, pr, pg, pb, 1.0f);
+            drawRect(barX, barY, barW * t, 16.0f, pr, pg, pb, 1.0f);
 
-            char chargeLabel[20];
-            snprintf(chargeLabel, sizeof(chargeLabel), "POWER  %d%%",
-                     (int)(player.chargeTimer * 100.0f));
-            font.draw(chargeLabel, barX, barY - 6.0f, pr, pg, pb, 1.0f);
-            drawRect(barX, barY, barW, 16.0f, 0.15f, 0.15f, 0.15f, 0.9f);
+            char powerLabel[24];
+            snprintf(powerLabel, sizeof(powerLabel), "POWER  %d", (int)pullLen);
+            font.draw(powerLabel, barX, barY - 6.0f, pr, pg, pb, 1.0f);
         }
 
         if (player.punchCooldown > 0.0f)

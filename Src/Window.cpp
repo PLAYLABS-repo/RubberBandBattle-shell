@@ -11,7 +11,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         {
             if (g_window)
             {
-                int w = LOWORD(lParam);
+           int w = LOWORD(lParam);
                 int h = HIWORD(lParam);
 
                 g_window->setSize(w, h); // ✅ FIXED

@@ -176,24 +176,6 @@ bool TimelineAnimator::load(const char* path)
         symbols[symName] = std::move(t);
     }
 
-    // Bug 1 fix: the root ANIMATION object lives outside SYMBOL_DICTIONARY
-    // and would otherwise be silently ignored. Register it in symbols so
-    // play() can find it by its SYMBOL_name.
-    if (j.contains("ANIMATION") && !j["ANIMATION"].is_null())
-    {
-        auto& anim = j["ANIMATION"];
-        std::string animName = safeString(anim, "SYMBOL_name");
-        if (!animName.empty() && !symbols.count(animName))
-        {
-            TA_Timeline t;
-            if (anim.contains("TIMELINE") && !anim["TIMELINE"].is_null())
-                t.totalFrames = parseLayers(anim["TIMELINE"], t);
-            else
-                t.totalFrames = 1;
-            symbols[animName] = std::move(t);
-        }
-    }
-
     for (auto it = symbols.begin(); it != symbols.end(); ++it)
     {
         if (it->first.find("_ANIM_") != std::string::npos)
@@ -220,7 +202,7 @@ void TimelineAnimator::play(const std::string& entity, const std::string& animTy
     activeTimeline = &it->second;
     totalFrames    = activeTimeline->totalFrames;
     currentFrame   = 0;
-    elapsedTime    = 0.0f;
+    frameTimer     = 0.0f;
 }
 
 // =========================
@@ -230,11 +212,14 @@ void TimelineAnimator::update(float dt)
 {
     if (!activeTimeline) return;
 
-    elapsedTime += dt;
-
-    // Keep currentFrame in sync for external readers (e.g. game logic checks).
-    int totalF = totalFrames > 0 ? totalFrames : 1;
-    currentFrame = (int)(elapsedTime * fps) % totalF;
+    frameTimer += dt;
+    if (frameTimer >= 1.0f / fps)
+    {
+        frameTimer = 0.0f;
+        currentFrame++;
+        if (currentFrame >= totalFrames)
+            currentFrame = 0;
+    }
 }
 
 // =========================
@@ -254,10 +239,7 @@ void TimelineAnimator::draw(Image* img, Atlas* atlas, Camera& cam)
     float rootRot   = parent.enabled ? parent.rotation : 0.0f;
     Vec2  rootScale = parent.enabled ? parent.scale    : Vec2{1, 1};
 
-    // Pass elapsed time so every nested symbol derives its own frame
-    // independently at the shared fps, instead of inheriting the parent's
-    // raw frame index (which made shorter symbols cycle proportionally faster).
-    drawTimeline(*activeTimeline, img, atlas, rootPos, rootRot, rootScale, elapsedTime);
+    drawTimeline(*activeTimeline, img, atlas, rootPos, rootRot, rootScale, currentFrame);
 
     glDisable(GL_BLEND);
 }
@@ -298,14 +280,11 @@ void TimelineAnimator::drawSprite(
 
     glTranslatef(pos.x, pos.y, 0);
 
-    // Bug 3 fix: bitmapOff is a pre-rotation local offset (the sprite-sheet
-    // frame's registration point within the symbol).  It must be translated
-    // *before* the pivot/rotate so it rotates with the sprite.
-    glTranslatef(bx, by, 0);
-
     glTranslatef(px, py, 0);
     glRotatef(rotDeg, 0, 0, 1);
     glTranslatef(-px, -py, 0);
+
+    glTranslatef(bx, by, 0);
 
     glBegin(GL_QUADS);
     glTexCoord2f(u1, v1); glVertex2f(0, 0);
@@ -327,16 +306,9 @@ void TimelineAnimator::drawTimeline(
     Vec2         parentPos,
     float        parentRot,
     Vec2         parentScale,
-    float        elapsed       // seconds since this timeline started
+    int          frame
 )
 {
-    // Each symbol derives its current frame from elapsed time at the shared fps.
-    // This ensures all symbols — regardless of their individual totalFrames —
-    // advance at the same wall-clock rate instead of cycling proportionally faster
-    // when their frame count is shorter than the root's.
-    int safeTF = timeline.totalFrames > 0 ? timeline.totalFrames : 1;
-    int frame  = (int)(elapsed * fps) % safeTF;
-
     for (int li = (int)timeline.layers.size() - 1; li >= 0; li--)
     {
         auto& layer = timeline.layers[li];
@@ -369,31 +341,14 @@ void TimelineAnimator::drawTimeline(
                 if (!e.symbolName.empty() && symbols.count(e.symbolName))
                 {
                     auto& sym = symbols[e.symbolName];
-                    int symSafeTF = sym.totalFrames > 0 ? sym.totalFrames : 1;
 
-                    float symElapsed;
+                    int symFrame;
                     if (e.isGraphic)
-                    {
-                        // Graphic: locked to the parent clock, offset by firstFrame.
-                        // Convert firstFrame back to seconds so the offset is in time-space.
-                        float firstFrameSecs = e.firstFrame / fps;
-                        if (e.looping)
-                            // Wrap within the symbol's own duration
-                            symElapsed = fmodf(elapsed + firstFrameSecs,
-                                               symSafeTF / fps);
-                        else
-                            // Play-once: clamp at the last frame
-                            symElapsed = std::min(elapsed + firstFrameSecs,
-                                                  (symSafeTF - 1) / fps);
-                    }
+                        symFrame = e.firstFrame % (sym.totalFrames > 0 ? sym.totalFrames : 1);
                     else
-                    {
-                        // Movieclip: independent clock, starts from 0 when
-                        // its parent timeline started. Same elapsed time, own length.
-                        symElapsed = elapsed;
-                    }
+                        symFrame = frame % (sym.totalFrames > 0 ? sym.totalFrames : 1);
 
-                    drawTimeline(sym, img, atlas, pos, rot, scale, symElapsed);
+                    drawTimeline(sym, img, atlas, pos, rot, scale, symFrame);
                 }
             }
         }

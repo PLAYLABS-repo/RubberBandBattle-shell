@@ -66,7 +66,7 @@ class TimelineAnimator
 {
 public:
     // -------------------------------------------------------
-    // Parent transform � set before draw() to attach to a world anchor.
+    // Parent transform — set before draw() to attach to a world anchor.
     //   animator.parent.enabled  = true;
     //   animator.parent.position = {playerX, playerY};
     //   animator.parent.rotation = playerRotRad;
@@ -89,8 +89,8 @@ private:
     std::map<std::string, TA_Timeline> symbols;
     TA_Timeline* activeTimeline = nullptr;
 
-    float elapsedTime = 0.0f;  // seconds since play() was called
-    float fps         = 24.0f;
+    float frameTimer = 0.0f;
+    float fps        = 24.0f;
 
     void drawTimeline(
         TA_Timeline& timeline,
@@ -99,7 +99,7 @@ private:
         Vec2         parentPos,
         float        parentRot,   // radians
         Vec2         parentScale,
-        float        elapsed      // seconds since this timeline started
+        int          frame
     );
 
     void drawSprite(
