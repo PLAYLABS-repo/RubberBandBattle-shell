@@ -1,6 +1,6 @@
 {
     "ANIMATION": {
-        "name": "Skins",
+        "name": "Rubber Band Batlle (1080p) Flash",
         "StageInstance": {
             "SYMBOL_Instance": {
                 "SYMBOL_name": "ANIMATION_ANIM_ALL",
@@ -15350,9 +15350,10 @@
                     ]
                 },
                 {
-                    "Layer_name": "Layer_2",
+                    "Layer_name": "code",
                     "Frames": [
                         {
+                            "name": "frameLoop(1,32)",
                             "index": 0,
                             "duration": 1,
                             "elements": []
@@ -15513,6 +15514,7 @@
                             "elements": []
                         },
                         {
+                            "name": "frameOnce(33,61)",
                             "index": 32,
                             "duration": 1,
                             "elements": []
@@ -15658,6 +15660,7 @@
                             "elements": []
                         },
                         {
+                            "name": "frameLoop(62,69)",
                             "index": 61,
                             "duration": 1,
                             "elements": []
@@ -15698,6 +15701,7 @@
                             "elements": []
                         },
                         {
+                            "name": "frameOnce(70,116)",
                             "index": 69,
                             "duration": 1,
                             "elements": []
@@ -15933,6 +15937,7 @@
                             "elements": []
                         },
                         {
+                            "name": "frameLoop(117,132)",
                             "index": 116,
                             "duration": 1,
                             "elements": []
@@ -16013,6 +16018,7 @@
                             "elements": []
                         },
                         {
+                            "name": "frameLoop(133,153)",
                             "index": 132,
                             "duration": 1,
                             "elements": []
@@ -16118,6 +16124,7 @@
                             "elements": []
                         },
                         {
+                            "name": "frameOnce(154,162)",
                             "index": 153,
                             "duration": 1,
                             "elements": []
@@ -16163,6 +16170,7 @@
                             "elements": []
                         },
                         {
+                            "name": "frameOnce(154,162)",
                             "index": 162,
                             "duration": 1,
                             "elements": []
@@ -48809,7 +48817,7 @@
                                     "elements": [
                                         {
                                             "ATLAS_SPRITE_instance": {
-                                                "name": "0015",
+                                                "name": "0023",
                                                 "Position": {
                                                     "x": -44,
                                                     "y": 236
@@ -48824,7 +48832,7 @@
                                     "elements": [
                                         {
                                             "ATLAS_SPRITE_instance": {
-                                                "name": "0023",
+                                                "name": "0024",
                                                 "Position": {
                                                     "x": -51,
                                                     "y": 234
@@ -48839,7 +48847,7 @@
                                     "elements": [
                                         {
                                             "ATLAS_SPRITE_instance": {
-                                                "name": "0024",
+                                                "name": "0025",
                                                 "Position": {
                                                     "x": -55,
                                                     "y": 232
@@ -48854,7 +48862,7 @@
                                     "elements": [
                                         {
                                             "ATLAS_SPRITE_instance": {
-                                                "name": "0025",
+                                                "name": "0018",
                                                 "Position": {
                                                     "x": -59,
                                                     "y": 237

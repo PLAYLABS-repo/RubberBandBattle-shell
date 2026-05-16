@@ -262,11 +262,14 @@ void TimelineAnimator::drawSprite(
     float w = fr.w * scale.x;
     float h = fr.h * scale.y;
 
-    float px = pivot.x * scale.x;
-    float py = pivot.y * scale.y;
-
     float bx = bitmapOff.x * scale.x;
     float by = bitmapOff.y * scale.y;
+
+    // transformationPoint is in symbol-local space (same space as bitmapOff).
+    // The quad's top-left sits at bitmapOff, so the pivot expressed relative
+    // to the quad's own origin is (transformationPoint - bitmapOff) * scale.
+    float px = (pivot.x - bitmapOff.x) * scale.x;
+    float py = (pivot.y - bitmapOff.y) * scale.y;
 
     float u1 = fr.x / (float)img->width;
     float v1 = fr.y / (float)img->height;
@@ -280,11 +283,15 @@ void TimelineAnimator::drawSprite(
 
     glTranslatef(pos.x, pos.y, 0);
 
+    // FIX (bug 4): bitmap offset is defined in pre-rotation local space, so it
+    // must be applied BEFORE the pivot/rotate/unpivot sequence. Applying it
+    // after glRotatef caused the offset vector to be rotated along with the
+    // sprite, displacing it incorrectly whenever rotation != 0.
+    glTranslatef(bx, by, 0);
+
     glTranslatef(px, py, 0);
     glRotatef(rotDeg, 0, 0, 1);
     glTranslatef(-px, -py, 0);
-
-    glTranslatef(bx, by, 0);
 
     glBegin(GL_QUADS);
     glTexCoord2f(u1, v1); glVertex2f(0, 0);

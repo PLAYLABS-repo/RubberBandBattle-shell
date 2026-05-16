@@ -59,7 +59,7 @@ bool Window::create(const char* title, int w, int h)
     WNDCLASS wc = {};
     wc.lpfnWndProc = WindowProc;
     wc.hInstance = GetModuleHandle(nullptr);
-    wc.lpszClassName = "playFrameworkWindow";
+    wc.lpszClassName = "window";
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
 
     RegisterClass(&wc);
