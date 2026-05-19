@@ -104,6 +104,12 @@ extern "C"
     Atlas*  LoadAtlas   (const char* path);
     void    FreeAtlas   (Atlas* atlas);
 
+    /// Look up a sprite frame by name (works with both Animate and TexturePacker atlases).
+    /// Returns 1 on success, 0 if not found.
+    /// TexturePacker sprites are stored by their trimmed filename.
+    int  AtlasGetFrame(Atlas* atlas, const char* name,
+                       float* x, float* y, float* w, float* h);
+
     // ---- Sound ----------------------------------------------
     Sound*  CreateSound ();
     void    DestroySound(Sound* snd);

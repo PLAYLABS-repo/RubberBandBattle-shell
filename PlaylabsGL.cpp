@@ -100,7 +100,30 @@ Atlas* LoadAtlas(const char* path)
     return a;
 }
 
+// Convenience: Load atlas from a TexturePacker-formatted file
+Atlas* LoadAtlasTP(const char* path)
+{
+    if (!path) return nullptr;
+    Atlas* a = new Atlas();
+    if (!a->load(path)) { delete a; return nullptr; }
+    return a;
+}
+
 void FreeAtlas(Atlas* atlas) { delete atlas; }
+
+int AtlasGetFrame(Atlas* atlas, const char* name, float* x, float* y, float* w, float* h)
+{
+    if (!atlas || !name) return 0;
+    Frame f;
+    if (atlas->get(name, f)) {
+        if (x) *x = f.x;
+        if (y) *y = f.y;
+        if (w) *w = f.w;
+        if (h) *h = f.h;
+        return 1;
+    }
+    return 0;
+}
 
 // =============================================================
 // Sound
