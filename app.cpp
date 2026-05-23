@@ -13,7 +13,9 @@
 #include "DrawHelpers.h"
 #include "Bullet.h"
 #include "Player.h"
-
+#ifdef _DEBUG
+#include "DebugPanel.h"
+#endif
 // Build 0.0.19
 
 int main()
@@ -21,6 +23,13 @@ int main()
     Window window;
     if (!window.create("RubberBandBattle-Shell", 1280, 720))
         return -1;
+#ifdef _DEBUG
+    // ---- Debug panel ----
+    if (!DebugPanel_Init(GetModuleHandle(nullptr)))
+        MessageBoxA(nullptr, "DebugPanel failed to initialise.", "Warning", MB_OK | MB_ICONWARNING);
+#endif
+    // ---- Font ----
+    UI::_font::load("Resources/Font/Confale.ttf");
 
     Camera main_cam;
     main_cam.position = {0.0f, 0.0f};
@@ -36,15 +45,15 @@ int main()
     Sound* sfxPunch = CreateSound(); sfxPunch->load("punch.wav");
 
     // ---- Assets ----
-    Image* sheet = PL_LoadImage("Resources/Skins/spritemap.png");
-    Atlas* atlas = LoadAtlas("Resources/Skins/spritemap.json");
+    Image* playersheet = PL_LoadImage("Resources/Skins/spritemap.png");
+    Atlas* playeratlas = LoadAtlas("Resources/Skins/spritemap.json");
 
     // ---- Player ----
     Player player;
     player.sprite                 = CreateSprite();
-    player.sprite->image          = sheet;
-    player.sprite->atlas          = atlas;
-    player.sprite->frameName      = "0010";
+    player.sprite->image          = playersheet;
+    player.sprite->atlas          = playeratlas;
+    player.sprite->frameName      = "0001";
     player.sprite->position       = {player.x, player.y};
     player.sprite->targetPosition = {player.x, player.y};
     player.sprite->scale          = {1.0f, 1.0f};
@@ -56,12 +65,11 @@ int main()
 
     // ---- Background ----
     Sprite* background         = CreateSprite();
-    background->image          = sheet;
-    background->atlas          = atlas;
+    background->image          = playersheet;
+    background->atlas          = playeratlas;
     background->frameName      = "0001";
     background->position       = {0.0f, 0.0f};
     background->targetPosition = {0.0f, 0.0f};
-
 
     std::vector<Bullet> bullets;
     bullets.reserve(64);
@@ -75,13 +83,16 @@ int main()
     Player::State lastAnimState = Player::State::IDLE;
 
     // Death / respawn
-    bool  isDead        = false;
-    float respawnTimer  = 0.0f;
-    const float RESPAWN_DELAY = 3.0f;
+    bool  isDead           = false;
+    float respawnTimer     = 0.0f;
+    bool  deathAnimDone    = false;
+    float deathAnimTimer   = 0.0f;
+    const float RESPAWN_DELAY  = 3.0f;
+    const float DEATH_ANIM_DUR = 1.0f;
 
-    // Spawn position
-    const float SPAWN_X = 200.0f;
-    const float SPAWN_Y = 436.0f;
+    // Spawn position — mutable so debug panel sliders can change them
+    float SPAWN_X = 200.0f;
+    float SPAWN_Y = 436.0f;
 
     // ==========================================================
     // GAME LOOP
@@ -102,12 +113,29 @@ int main()
         PollInput(&window);
         int sw = window.getWidth(), sh = window.getHeight();
         promptPulse += dt;
-
+#ifdef _DEBUG
+        // ---- Debug panel tick + command dispatch ----
+        DebugPanel_Tick();
+        DebugPanel_PollCommands(
+            isDead ? nullptr : &player,
+            SPAWN_X, SPAWN_Y,
+            isDead,
+            (int)MAX_AMMO
+        );
+        DebugPanel_UpdateStatus(
+            (int)player.hp, (int)player.maxHp,
+            (int)player.ammo, (int)MAX_AMMO
+        );
+#endif
         // ---- Death check ----
         if (player.hp <= 0 && !isDead)
         {
-            isDead       = true;
-            respawnTimer = RESPAWN_DELAY;
+            isDead         = true;
+            respawnTimer   = RESPAWN_DELAY;
+            deathAnimDone  = false;
+            deathAnimTimer = 0.0f;
+            Anim(player.anim, PLAYER, DIE);
+            lastAnimState  = Player::State::IDLE;
         }
 
         // ---- Respawn countdown ----
@@ -116,7 +144,6 @@ int main()
             respawnTimer -= dt;
             if (respawnTimer <= 0.0f)
             {
-                // Reset player
                 isDead       = false;
                 player.hp    = player.maxHp;
                 player.x     = SPAWN_X;
@@ -130,6 +157,8 @@ int main()
                 player.ammo  = MAX_AMMO;
                 player.sprite->position       = {player.x, player.y};
                 player.sprite->targetPosition = {player.x, player.y};
+                deathAnimDone  = false;
+                deathAnimTimer = 0.0f;
                 Anim(player.anim, PLAYER, IDLE);
                 lastAnimState = Player::State::IDLE;
             }
@@ -158,8 +187,7 @@ int main()
                 player.aimDirY = -pullDY / pullLen;
             }
 
-            // Facing follows aim direction
-            player.facingX = (player.aimDirX >= 0.0f) ? 1.0f : -1.0f;
+            player.facingX = (pullDX >= 0.0f) ? 1.0f : -1.0f;
 
             player.shootCooldown -= dt;
             player.punchCooldown -= dt;
@@ -177,8 +205,8 @@ int main()
                 b.velX = player.aimDirX * pullLen;
                 b.velY = player.aimDirY * pullLen;
                 b.sprite                 = CreateSprite();
-                b.sprite->image          = sheet;
-                b.sprite->atlas          = atlas;
+                b.sprite->image          = playersheet;
+                b.sprite->atlas          = playeratlas;
                 b.sprite->frameName      = "0000";
                 b.sprite->scale          = {player.facingX, 1.0f};
                 b.sprite->targetScale    = {player.facingX, 1.0f};
@@ -386,7 +414,23 @@ int main()
         if (!isDead)
         {
             player.sprite->update(dt); player.sprite->draw(main_cam);
-            TickAnimator(player.anim, dt, sheet, atlas, &main_cam);
+            TickAnimator(player.anim, dt, playersheet, playeratlas, &main_cam);
+        }
+        else
+        {
+            // Tick death anim once, then freeze on the last frame
+            SetAnimatorParent(player.anim, player.x, player.y, 0.0f, player.facingX, 1.0f);
+            if (!deathAnimDone)
+            {
+                deathAnimTimer += dt;
+                TickAnimator(player.anim, dt, playersheet, playeratlas, &main_cam);
+                if (deathAnimTimer >= DEATH_ANIM_DUR)
+                    deathAnimDone = true;
+            }
+            else
+            {
+                TickAnimator(player.anim, 0.0f, playersheet, playeratlas, &main_cam);
+            }
         }
 
         // Debug hitboxes (alive only)
@@ -407,6 +451,13 @@ int main()
                      player.punchHit ? 0.2f : 0.6f,
                      player.punchHit ? 0.2f : 0.0f,
                      player.punchHit ? 0.9f : 0.55f);
+        }
+
+        // Spawn point crosshair (always visible in world space)
+        {
+            const float cs = 12.0f;  // crosshair arm length
+            drawLine(SPAWN_X - cs, SPAWN_Y, SPAWN_X + cs, SPAWN_Y, 0.2f, 1.0f, 0.4f, 0.8f, 1.5f);
+            drawLine(SPAWN_X, SPAWN_Y - cs, SPAWN_X, SPAWN_Y + cs, 0.2f, 1.0f, 0.4f, 0.8f, 1.5f);
         }
 
         // Arc preview (alive + ammo only)
@@ -454,7 +505,7 @@ int main()
                             hr, hg, 0.1f, 0.15f, 0.15f, 0.15f);
 
             char hpBuf[24];
-            snprintf(hpBuf, sizeof(hpBuf), "%d / %d", player.hp, player.maxHp);
+            snprintf(hpBuf, sizeof(hpBuf), "%d / %d", (int)player.hp, (int)player.maxHp);
             UI::Label(hpBuf, bx + barW + 8.0f, by + 18.0f, 2.0f, 1, 1, 1, 0.9f);
         }
 
@@ -473,7 +524,7 @@ int main()
         {
             bool outOfAmmo = (player.ammo <= 0);
             char countBuf[32];
-            snprintf(countBuf, sizeof(countBuf), "AMMO  %d / %d", player.ammo, MAX_AMMO);
+            snprintf(countBuf, sizeof(countBuf), "AMMO  %d / %d", (int)player.ammo, (int)MAX_AMMO);
             float labelW = UI::_font::textWidth(countBuf, 2.0f);
             float labelX = (sw - labelW) * 0.5f;
             float labelY = (float)sh - 34.0f;
@@ -530,7 +581,9 @@ int main()
     DestroyAnimator(player.anim); DestroySprite(player.sprite);
     DestroySprite(background);
     DestroySound(sfxPunch); DestroySound(sfxJump); DestroySound(bgm);
-    FreeAtlas(atlas);       PL_FreeImage(sheet);
-
+    FreeAtlas(playeratlas);       PL_FreeImage(playersheet);
+    #ifdef _DEBUG
+    DebugPanel_Destroy();
+#endif
     return 0;
 }
