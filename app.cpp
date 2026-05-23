@@ -387,15 +387,50 @@ int main()
             bullets.erase(std::remove_if(bullets.begin(), bullets.end(),
                                          [](const Bullet& b){ return b.dead; }), bullets.end());
 
-            // ---- Wall collision ----
-            float phbX = player.x + (player.w - 100.0f) * 0.5f, phbY = player.y + player.h;
-            float phbW = player.jumping ? 60.0f : 100.0f, phbH = player.jumping ? 100.0f : 200.0f;
-            if (AABBIntersects(phbX, phbY, phbW, phbH, wX, wY, wW, wH))
-            {
-                player.x -= moveX * player.speed * dt;
-                player.sprite->position       = {player.x, player.y};
-                player.sprite->targetPosition = {player.x, player.y};
-            }
+// ---- Wall collision ----
+float phbX = player.x + (player.w - 100.0f) * 0.5f, phbY = player.y + player.h;
+float phbW = player.jumping ? 60.0f : 100.0f,        phbH = player.jumping ? 100.0f : 200.0f;
+
+AABB playerBox(phbX, phbY, phbW, phbH);
+AABB wallBox(wX, wY, wW, wH);
+
+CollisionSide side = playerBox.getCollisionSide(wallBox);
+switch (side)
+{
+    case CollisionSide::Top:
+        // Player landed on top of the wall — treat it as ground
+        player.y         = wY - phbH - player.h;   // snap above wall
+        player.baseY     = player.y;
+        player.velocityY = 0.0f;
+        player.jumping   = false;
+        if (!player.punching)
+        {
+            if (moving && lastAnimState != Player::State::RUN)
+            { Anim(player.anim, PLAYER, RUN);  lastAnimState = Player::State::RUN; }
+            else if (!moving && lastAnimState != Player::State::IDLE)
+            { Anim(player.anim, PLAYER, IDLE); lastAnimState = Player::State::IDLE; }
+        }
+        Event("player_landed", &player);
+        break;
+
+    case CollisionSide::Bottom:
+        // Player hit the underside (e.g. jumped into a platform)
+        player.velocityY = 0.0f;
+        player.y         = wY + wH - player.h;     // snap below wall
+        break;
+
+    case CollisionSide::Left:
+    case CollisionSide::Right:
+        // Horizontal wall — push back as before
+        player.x -= moveX * player.speed * dt;
+        break;
+
+    case CollisionSide::None:
+        break;
+}
+
+player.sprite->position       = {player.x, player.y};
+player.sprite->targetPosition = {player.x, player.y};
 
         } // end !isDead
 
