@@ -169,9 +169,12 @@ int main()
         // ======================================================
         if (!isDead)
         {
-            // ---- Mouse / aim ----
+            // ---- Mouse position + window bounds check ----
             int mousePixelX = 0, mousePixelY = 0;
             MousePos(&mousePixelX, &mousePixelY);
+
+            bool mouseInWindow = (mousePixelX >= 0 && mousePixelX < sw &&
+                                  mousePixelY >= 0 && mousePixelY < sh);
 
             float mouseWorldX, mouseWorldY;
             screenToWorld((float)mousePixelX, (float)mousePixelY,
@@ -192,8 +195,8 @@ int main()
             player.shootCooldown -= dt;
             player.punchCooldown -= dt;
 
-            // ---- Left-click: shoot ----
-            bool mouseHeld   = KeyDown(VK_LBUTTON) != 0;
+            // ---- Left-click: shoot (ignored outside window) ----
+            bool mouseHeld   = (mouseInWindow && KeyDown(VK_LBUTTON)) != 0;
             bool justClicked = mouseHeld && !prevMouseHeld;
             prevMouseHeld    = mouseHeld;
 
@@ -218,8 +221,8 @@ int main()
                 Event("bullet_fired", &player, &bullets.back());
             }
 
-            // ---- Right-click: punch ----
-            bool rMouseHeld   = KeyDown(VK_RBUTTON) != 0;
+            // ---- Right-click: punch (ignored outside window) ----
+            bool rMouseHeld   = (mouseInWindow && KeyDown(VK_RBUTTON)) != 0;
             bool rJustPressed = rMouseHeld && !prevRMouseHeld;
             prevRMouseHeld    = rMouseHeld;
 
@@ -387,50 +390,47 @@ int main()
             bullets.erase(std::remove_if(bullets.begin(), bullets.end(),
                                          [](const Bullet& b){ return b.dead; }), bullets.end());
 
-// ---- Wall collision ----
-float phbX = player.x + (player.w - 100.0f) * 0.5f, phbY = player.y + player.h;
-float phbW = player.jumping ? 60.0f : 100.0f,        phbH = player.jumping ? 100.0f : 200.0f;
+            // ---- Wall collision ----
+            float phbX = player.x + (player.w - 100.0f) * 0.5f, phbY = player.y + player.h;
+            float phbW = player.jumping ? 60.0f : 100.0f,        phbH = player.jumping ? 100.0f : 200.0f;
 
-AABB playerBox(phbX, phbY, phbW, phbH);
-AABB wallBox(wX, wY, wW, wH);
+            AABB playerBox(phbX, phbY, phbW, phbH);
+            AABB wallBox(wX, wY, wW, wH);
 
-CollisionSide side = playerBox.getCollisionSide(wallBox);
-switch (side)
-{
-    case CollisionSide::Top:
-        // Player landed on top of the wall — treat it as ground
-        player.y         = wY - phbH - player.h;   // snap above wall
-        player.baseY     = player.y;
-        player.velocityY = 0.0f;
-        player.jumping   = false;
-        if (!player.punching)
-        {
-            if (moving && lastAnimState != Player::State::RUN)
-            { Anim(player.anim, PLAYER, RUN);  lastAnimState = Player::State::RUN; }
-            else if (!moving && lastAnimState != Player::State::IDLE)
-            { Anim(player.anim, PLAYER, IDLE); lastAnimState = Player::State::IDLE; }
-        }
-        Event("player_landed", &player);
-        break;
+            CollisionSide side = playerBox.getCollisionSide(wallBox);
+            switch (side)
+            {
+                case CollisionSide::Top:
+                    player.y         = wY - phbH - player.h;
+                    player.baseY     = player.y;
+                    player.velocityY = 0.0f;
+                    player.jumping   = false;
+                    if (!player.punching)
+                    {
+                        if (moving && lastAnimState != Player::State::RUN)
+                        { Anim(player.anim, PLAYER, RUN);  lastAnimState = Player::State::RUN; }
+                        else if (!moving && lastAnimState != Player::State::IDLE)
+                        { Anim(player.anim, PLAYER, IDLE); lastAnimState = Player::State::IDLE; }
+                    }
+                    Event("player_landed", &player);
+                    break;
 
-    case CollisionSide::Bottom:
-        // Player hit the underside (e.g. jumped into a platform)
-        player.velocityY = 0.0f;
-        player.y         = wY + wH - player.h;     // snap below wall
-        break;
+                case CollisionSide::Bottom:
+                    player.velocityY = 0.0f;
+                    player.y         = wY + wH - player.h;
+                    break;
 
-    case CollisionSide::Left:
-    case CollisionSide::Right:
-        // Horizontal wall — push back as before
-        player.x -= moveX * player.speed * dt;
-        break;
+                case CollisionSide::Left:
+                case CollisionSide::Right:
+                    player.x -= moveX * player.speed * dt;
+                    break;
 
-    case CollisionSide::None:
-        break;
-}
+                case CollisionSide::None:
+                    break;
+            }
 
-player.sprite->position       = {player.x, player.y};
-player.sprite->targetPosition = {player.x, player.y};
+            player.sprite->position       = {player.x, player.y};
+            player.sprite->targetPosition = {player.x, player.y};
 
         } // end !isDead
 
@@ -453,7 +453,6 @@ player.sprite->targetPosition = {player.x, player.y};
         }
         else
         {
-            // Tick death anim once, then freeze on the last frame
             SetAnimatorParent(player.anim, player.x, player.y, 0.0f, player.facingX, 1.0f);
             if (!deathAnimDone)
             {
@@ -490,7 +489,7 @@ player.sprite->targetPosition = {player.x, player.y};
 
         // Spawn point crosshair (always visible in world space)
         {
-            const float cs = 12.0f;  // crosshair arm length
+            const float cs = 12.0f;
             drawLine(SPAWN_X - cs, SPAWN_Y, SPAWN_X + cs, SPAWN_Y, 0.2f, 1.0f, 0.4f, 0.8f, 1.5f);
             drawLine(SPAWN_X, SPAWN_Y - cs, SPAWN_X, SPAWN_Y + cs, 0.2f, 1.0f, 0.4f, 0.8f, 1.5f);
         }
@@ -617,7 +616,7 @@ player.sprite->targetPosition = {player.x, player.y};
     DestroySprite(background);
     DestroySound(sfxPunch); DestroySound(sfxJump); DestroySound(bgm);
     FreeAtlas(playeratlas);       PL_FreeImage(playersheet);
-    #ifdef _DEBUG
+#ifdef _DEBUG
     DebugPanel_Destroy();
 #endif
     return 0;
