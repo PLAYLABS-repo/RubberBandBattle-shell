@@ -225,12 +225,12 @@ bool DebugPanel_Init(HINSTANCE hInstance)
     s_hFont = CreateFontA(
         14, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
         DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-        CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, "Consolas");
+        CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, "TUBAnComic Bold");
 
     s_hFontBold = CreateFontA(
         14, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
         DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-        CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, "Consolas");
+        CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, "TUBAnComic Bold");
 
     // Register window class
     WNDCLASSEXA wc = {};
@@ -239,14 +239,14 @@ bool DebugPanel_Init(HINSTANCE hInstance)
     wc.lpfnWndProc   = DebugWndProc;
     wc.hInstance     = hInstance;
     wc.hbrBackground = s_hBrushBg;
-    wc.lpszClassName = "RBB_DebugPanel";
+    wc.lpszClassName = "Debug Panel";
     wc.hCursor       = LoadCursorA(nullptr, IDC_ARROW);
     if (!RegisterClassExA(&wc)) return false;
 
     // Panel window — 292 × 410, top-right corner
     s_hwnd = CreateWindowExA(
         WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
-        "RBB_DebugPanel", "Debug Panel  [RubberBandBattle]",
+        "Debug Panel", "Debug Panel",
         WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_VISIBLE,
         10, 10, 300, 420,
         nullptr, nullptr, hInstance, nullptr);
@@ -267,21 +267,21 @@ bool DebugPanel_Init(HINSTANCE hInstance)
                             DBG_WORLD_MIN_Y, DBG_WORLD_MAX_Y, 436);
 
     // Preview note
-    MakeLabel(s_hwnd, "Drag sliders to set the respawn position.", 12, 144, 270, 16, 0, s_hFont);
-    MakeLabel(s_hwnd, "Takes effect on next respawn or Teleport.", 12, 162, 270, 16, 0, s_hFont);
+    MakeLabel(s_hwnd, "Going to the desired position", 12, 144, 270, 16, 0, s_hFont);
+    MakeLabel(s_hwnd, "", 12, 162, 270, 16, 0, s_hFont);
 
     // Teleport button
-    MakeButton(s_hwnd, "Teleport Now", 12, 184, 130, 26, DBG_IDC_BTN_TELEPORT, s_hFontBold);
+    MakeButton(s_hwnd, "Go now", 12, 184, 130, 26, DBG_IDC_BTN_TELEPORT, s_hFontBold);
 
     // ---- SECTION: PLAYER TOOLS ---------------------------------------
     // Suicide button (wide, red-ish)
-    HWND btnSuicide = MakeButton(s_hwnd, "SUICIDE  (set HP = 0)", 12, 224, 270, 34,
+    HWND btnSuicide = MakeButton(s_hwnd, "KILL USER", 12, 224, 270, 34,
                                   DBG_IDC_BTN_SUICIDE, s_hFontBold);
     (void)btnSuicide;
 
     // Max HP + Full Ammo
-    MakeButton(s_hwnd, "Restore Full HP",   12, 266, 130, 28, DBG_IDC_BTN_MAXHP,    s_hFont);
-    MakeButton(s_hwnd, "Fill Ammo",        150, 266, 130, 28, DBG_IDC_BTN_FULLAMMO, s_hFont);
+    MakeButton(s_hwnd, "Eternal life",   12, 266, 130, 28, DBG_IDC_BTN_MAXHP,    s_hFont);
+    MakeButton(s_hwnd, "Fill magazine",        150, 266, 130, 28, DBG_IDC_BTN_FULLAMMO, s_hFont);
 
     // ---- SECTION: STATUS ---------------------------------------------
     s_statusHp   = MakeLabel(s_hwnd, "HP   : ---",   12, 334, 270, 16, DBG_IDC_STATIC_HP,   s_hFont);
@@ -318,9 +318,9 @@ void DebugPanel_UpdateStatus(int hp, int maxHp, int ammo, int maxAmmo)
 {
     if (!s_statusHp || !s_statusAmmo) return;
     char buf[64];
-    snprintf(buf, sizeof(buf), "HP   : %d / %d", hp, maxHp);
+    snprintf(buf, sizeof(buf), "HEALTH   : %d / %d", hp, maxHp);
     SetWindowTextA(s_statusHp, buf);
-    snprintf(buf, sizeof(buf), "AMMO : %d / %d", ammo, maxAmmo);
+    snprintf(buf, sizeof(buf), "BULLET : %d / %d", ammo, maxAmmo);
     SetWindowTextA(s_statusAmmo, buf);
 }
 

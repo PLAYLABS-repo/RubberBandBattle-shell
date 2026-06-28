@@ -4,7 +4,7 @@
 // OpenGL 1.1 compatible — no shaders, no VAOs, no VBOs.
 //
 // Usage:
-//   #include "PlaylabsUI.h"
+//   #include "Src/UI.h"
 //
 //   // ONE-TIME setup after OpenGL context is ready:
 //   UI::_font::load("Resources/Font/Confale.ttf");

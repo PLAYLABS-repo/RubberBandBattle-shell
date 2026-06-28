@@ -82,6 +82,30 @@ public:
     void update(float dt);
     void draw(Image* img, Atlas* atlas, Camera& cam);
 
+    // -------------------------------------------------------
+    // Part swapping — replace a sprite name inside a specific animation.
+    //
+    // ChangePart  — swaps only inside the TOP-LEVEL timeline of animKey.
+    //               Use when the sprite sits directly on the root timeline.
+    //               e.g. ChangePart("head_default", "head_helmet", "PLAYER_ANIM_RUN")
+    //
+    // ChangeParts — swaps inside animKey AND every nested symbol it references,
+    //               recursively. Use when the sprite may live inside a
+    //               sub-symbol (body part, limb, accessory, etc.).
+    //               e.g. ChangeParts("sword_a", "sword_b", "PLAYER_ANIM_RUN")
+    //
+    // Both functions mutate the stored TA_Timeline in `symbols`, so the swap
+    // persists until you call ChangePart(s) again or reload the file.
+    // To revert, call the same function with the arguments swapped.
+    // -------------------------------------------------------
+    void ChangePart (const std::string& oldSprite,
+                     const std::string& newSprite,
+                     const std::string& animKey);
+
+    void ChangeParts(const std::string& oldSprite,
+                     const std::string& newSprite,
+                     const std::string& animKey);
+
     int  currentFrame = 0;
     int  totalFrames  = 0;
 
@@ -90,7 +114,7 @@ private:
     TA_Timeline* activeTimeline = nullptr;
 
     float frameTimer = 0.0f;
-    float fps        = 24.0f;
+    float fps        = 30.0f;
 
     void drawTimeline(
         TA_Timeline& timeline,
@@ -108,4 +132,15 @@ private:
         Vec2 pos, float rotRad, Vec2 scale, Vec2 pivot,
         Vec2 bitmapOff
     );
+
+    // Internal helpers for ChangePart / ChangeParts
+    void swapSpriteInTimeline(TA_Timeline&       timeline,
+                              const std::string& oldSprite,
+                              const std::string& newSprite,
+                              bool               recursive);
+
+    void swapSpriteInElement (TA_Element&        el,
+                              const std::string& oldSprite,
+                              const std::string& newSprite,
+                              bool               recursive);
 };

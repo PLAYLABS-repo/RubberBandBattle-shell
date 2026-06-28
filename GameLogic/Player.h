@@ -41,7 +41,7 @@ struct Player
     Sprite*           sprite = nullptr;
     TimelineAnimator* anim   = nullptr;
 
-    enum class State { IDLE, RUN, JUMP, PUNCH, DEAD } state = State::IDLE;
+    enum class State { IDLE, RUN, JUMP, PUNCH, DEAD, WALK } state = State::IDLE;
     float facingX = 1.0f;
 
     float muzzleX() const { return x + w * 0.5f; }

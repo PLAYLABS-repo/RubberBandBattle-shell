@@ -40,7 +40,7 @@ int main()
     int   fpsFrames = 0;
     float promptPulse = 0.0f;
 
-    Sound* bgm      = CreateSound(); bgm->load("bgm.wav");      bgm->play(true);
+    Sound* bgm      = CreateSound(); bgm->load("Resources/Sound/BackgroundMusic/bgm.wav");      bgm->play(true);
     Sound* sfxJump  = CreateSound(); sfxJump->load("jump.wav");
     Sound* sfxPunch = CreateSound(); sfxPunch->load("punch.wav");
 
@@ -93,6 +93,14 @@ int main()
     // Spawn position — mutable so debug panel sliders can change them
     float SPAWN_X = 200.0f;
     float SPAWN_Y = 436.0f;
+
+    // ---- Stamina ----
+    const float MAX_STAMINA       = 100.0f;
+    const float STAMINA_RUN_DRAIN =  20.0f; // per second while running
+    const float STAMINA_JMP_DRAIN =  15.0f; // flat cost per jump
+    const float STAMINA_RECOVER   =  12.0f; // per second when not running
+    float stamina = MAX_STAMINA;
+    bool  staminaExhausted = false;         // locked out of running until fully recovered
 
     // ==========================================================
     // GAME LOOP
@@ -155,6 +163,8 @@ int main()
                 player.punchCooldown = 0.0f;
                 player.shootCooldown = 0.0f;
                 player.ammo  = MAX_AMMO;
+                stamina          = MAX_STAMINA;
+                staminaExhausted = false;
                 player.sprite->position       = {player.x, player.y};
                 player.sprite->targetPosition = {player.x, player.y};
                 deathAnimDone  = false;
@@ -169,6 +179,13 @@ int main()
         // ======================================================
         if (!isDead)
         {
+            // ---- Shift held: walk vs run ----
+            bool shiftHeld = KeyDown(VK_SHIFT) != 0;
+
+            // ---- Stamina: exhaustion lock-out until fully recovered ----
+            if (staminaExhausted && stamina >= MAX_STAMINA)
+                staminaExhausted = false;
+
             // ---- Mouse position + window bounds check ----
             int mousePixelX = 0, mousePixelY = 0;
             MousePos(&mousePixelX, &mousePixelY);
@@ -250,12 +267,43 @@ int main()
                 if (KeyDown(VK_DOWN) || KeyDown('S')) { moveY =  1.0f; moving = true; }
             }
 
+            // ---- Speed: walk normally, run with shift ----
+            // Can't run while exhausted
+            bool canRun = shiftHeld && !staminaExhausted;
+
+            // Drain while running + moving, recover otherwise
+            if (canRun && moving)
+            {
+                stamina -= STAMINA_RUN_DRAIN * dt;
+                if (stamina <= 0.0f)
+                {
+                    stamina          = 0.0f;
+                    staminaExhausted = true;
+                    canRun           = false;
+                }
+            }
+            else if (!shiftHeld || !moving)
+            {
+                stamina = std::min(stamina + STAMINA_RECOVER * dt, MAX_STAMINA);
+            }
+
+            float currentSpeed = canRun ? player.speed * 1.7f : player.speed;
+
             // ---- Space: jump ----
             if (KeyPressed(VK_SPACE) && !player.jumping && !player.punching)
             {
                 player.baseY     = player.y;
                 player.velocityY = player.jumpForce;
                 player.jumping   = true;
+
+                // Flat stamina cost per jump
+                stamina -= STAMINA_JMP_DRAIN;
+                if (stamina <= 0.0f)
+                {
+                    stamina          = 0.0f;
+                    staminaExhausted = true;
+                }
+
                 Anim(player.anim, PLAYER, JUMP);
                 lastAnimState = Player::State::JUMP;
                 sfxJump->play(false);
@@ -287,13 +335,13 @@ int main()
 
             // ---- Physics ----
             if (!player.punching)
-                player.x += moveX * player.speed * dt;
+                player.x += moveX * currentSpeed * dt;
 
             if (!player.jumping)
             {
                 if (!player.punching)
                 {
-                    player.y += moveY * player.speed * dt;
+                    player.y += moveY * currentSpeed * dt;
                     player.y  = std::max(player.minY, std::min(player.y, player.maxY - player.h));
                 }
                 player.baseY = player.y;
@@ -310,10 +358,15 @@ int main()
 
                     if (!player.punching)
                     {
-                        if (moving && lastAnimState != Player::State::RUN)
+                        if (moving && canRun && lastAnimState != Player::State::RUN)
                         {
                             Anim(player.anim, PLAYER, RUN);
                             lastAnimState = Player::State::RUN;
+                        }
+                        else if (moving && !canRun && lastAnimState != Player::State::WALK)
+                        {
+                            Anim(player.anim, PLAYER, WALK);
+                            lastAnimState = Player::State::WALK;
                         }
                         else if (!moving && lastAnimState != Player::State::IDLE)
                         {
@@ -337,10 +390,15 @@ int main()
             // ---- Animation priority block ----
             if (!player.jumping && !player.punching)
             {
-                if (moving && lastAnimState != Player::State::RUN)
+                if (moving && canRun && lastAnimState != Player::State::RUN)
                 {
                     Anim(player.anim, PLAYER, RUN);
                     lastAnimState = Player::State::RUN;
+                }
+                else if (moving && !canRun && lastAnimState != Player::State::WALK)
+                {
+                    Anim(player.anim, PLAYER, WALK);
+                    lastAnimState = Player::State::WALK;
                 }
                 else if (!moving && lastAnimState != Player::State::IDLE)
                 {
@@ -407,10 +465,21 @@ int main()
                     player.jumping   = false;
                     if (!player.punching)
                     {
-                        if (moving && lastAnimState != Player::State::RUN)
-                        { Anim(player.anim, PLAYER, RUN);  lastAnimState = Player::State::RUN; }
+                        if (moving && canRun && lastAnimState != Player::State::RUN)
+                        {
+                            Anim(player.anim, PLAYER, RUN);
+                            lastAnimState = Player::State::RUN;
+                        }
+                        else if (moving && !canRun && lastAnimState != Player::State::WALK)
+                        {
+                            Anim(player.anim, PLAYER, WALK);
+                            lastAnimState = Player::State::WALK;
+                        }
                         else if (!moving && lastAnimState != Player::State::IDLE)
-                        { Anim(player.anim, PLAYER, IDLE); lastAnimState = Player::State::IDLE; }
+                        {
+                            Anim(player.anim, PLAYER, IDLE);
+                            lastAnimState = Player::State::IDLE;
+                        }
                     }
                     Event("player_landed", &player);
                     break;
@@ -422,7 +491,7 @@ int main()
 
                 case CollisionSide::Left:
                 case CollisionSide::Right:
-                    player.x -= moveX * player.speed * dt;
+                    player.x -= moveX * currentSpeed * dt;
                     break;
 
                 case CollisionSide::None:
@@ -541,6 +610,24 @@ int main()
             char hpBuf[24];
             snprintf(hpBuf, sizeof(hpBuf), "%d / %d", (int)player.hp, (int)player.maxHp);
             UI::Label(hpBuf, bx + barW + 8.0f, by + 18.0f, 2.0f, 1, 1, 1, 0.9f);
+        }
+
+        // Stamina bar
+        if (!isDead)
+        {
+            float stFill = std::max(0.0f, std::min(stamina / MAX_STAMINA, 1.0f));
+            // Yellow-white when full, orange when mid, red when exhausted
+            float sr = 1.0f;
+            float sg = staminaExhausted ? 0.15f : (0.3f + stFill * 0.7f);
+            float sb = staminaExhausted ? 0.05f : (stFill * 0.2f);
+
+            const float barW = 220.0f, barH = 14.0f;
+            const float bx   = 20.0f,  by   = (float)sh - 90.0f;
+
+            UI::Label("ST", bx, by, 2.0f,
+                      sr, staminaExhausted ? 0.2f : 0.85f, 0.1f, 1.0f);
+            UI::ProgressBar(stFill, bx, by + 16.0f, barW, barH,
+                            sr, sg, sb, 0.15f, 0.15f, 0.15f);
         }
 
         // Respawn countdown
