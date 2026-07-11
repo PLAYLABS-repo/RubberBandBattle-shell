@@ -27,8 +27,7 @@ public:
 
     float alpha = 1.0f;
 
-    // 🔥 REAL PIVOT (FROM TIMELINE)
-    Vec2 pivot = {0, 0};
+
 
     // =========================
     // TARGETS (LINEAR)

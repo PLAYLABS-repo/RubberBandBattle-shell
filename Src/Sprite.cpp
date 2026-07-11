@@ -101,8 +101,8 @@ AABB Sprite::getAABB() const
     }
 
     // pivot shifts the box
-    float left = position.x - pivot.x;
-    float top  = position.y - pivot.y;
+    float left;
+    float top;
 
     return AABB(left, top, w, h);
 }
@@ -151,14 +151,11 @@ void Sprite::draw(Camera& cam)
     // =========================
     // APPLY PIVOT (FLASH STYLE)
     // =========================
-    glTranslatef(-pivot.x, -pivot.y, 0);
+
 
     // =========================
     // ROTATE AROUND PIVOT
-    // =========================
-    glTranslatef(pivot.x, pivot.y, 0);
-    glRotatef(rotation, 0, 0, 1);
-    glTranslatef(-pivot.x, -pivot.y, 0);
+
 
     // =========================
     // SKEW

@@ -12,7 +12,7 @@ struct Player
     float y     = 436.0f;
     float w     = 64.0f;
     float h     = 64.0f;
-    float speed = 250.0f;
+    float speed = 200.0f;
 
     float minY = 100.0f;
     float maxY = 500.0f;

@@ -22,6 +22,7 @@ struct TA_Element
     float rotation  = 0.0f;   // radians (from DecomposedMatrix.Rotation.z)
     Vec2  pivot     = {0, 0}; // transformationPoint (raw pixels)
 
+
     // Graphic symbol playback
     bool  isGraphic  = false;
     int   firstFrame = 0;
