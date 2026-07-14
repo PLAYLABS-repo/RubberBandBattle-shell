@@ -29,7 +29,7 @@ int main()
         MessageBoxA(nullptr, "DebugPanel failed to initialise.", "Warning", MB_OK | MB_ICONWARNING);
 #endif
     // ---- Font ----
-    UI::_font::load("Resources/Font/Confale.ttf");
+    UI::_font::load("Resources/Font/newCardfont.ttf");
 
     Camera main_cam;
     main_cam.position = {0.0f, 0.0f};
@@ -40,7 +40,7 @@ int main()
     int   fpsFrames = 0;
     float promptPulse = 0.0f;
 
-    Sound* bgm      = CreateSound(); bgm->load("Resources/Sound/BackgroundMusic/bgm.wav");      bgm->play(true);
+    Sound* bgm      = CreateSound(); bgm->load("bgm.wav");      bgm->play(true);
     Sound* sfxJump  = CreateSound(); sfxJump->load("jump.wav");
     Sound* sfxPunch = CreateSound(); sfxPunch->load("punch.wav");
 
@@ -635,7 +635,7 @@ int main()
         {
             char respawnBuf[32];
             int  secsLeft = (int)ceilf(respawnTimer);
-            snprintf(respawnBuf, sizeof(respawnBuf), "RESPAWNING IN %d...", secsLeft);
+            snprintf(respawnBuf, sizeof(respawnBuf), "Died... respawn in %d...", secsLeft);
             float rw = UI::_font::textWidth(respawnBuf, 3.0f);
             UI::Label(respawnBuf, (sw - rw) * 0.5f, sh * 0.5f, 3.0f, 1.0f, 0.6f, 0.1f, 1.0f);
         }
@@ -645,7 +645,8 @@ int main()
         {
             bool outOfAmmo = (player.ammo <= 0);
             char countBuf[32];
-            snprintf(countBuf, sizeof(countBuf), "AMMO  %d / %d", (int)player.ammo, (int)MAX_AMMO);
+            snprintf(countBuf, sizeof(countBuf), "Magazine  %d / %d", (int)player.ammo, (int)MAX_AMMO);
+            //note: magazine means gun magazine
             float labelW = UI::_font::textWidth(countBuf, 2.0f);
             float labelX = (sw - labelW) * 0.5f;
             float labelY = (float)sh - 34.0f;
@@ -655,7 +656,7 @@ int main()
             if (outOfAmmo)
             {
                 float pulse = fabsf(sinf(promptPulse * 3.0f));
-                const char* hint = "[ RIGHT CLICK ] PUNCH";
+                const char* hint = "[ Punching";
                 float hintX = (sw - UI::_font::textWidth(hint, 2.0f)) * 0.5f;
                 float hintY = labelY - UI::_font::textHeight(2.0f) - 16.0f;
                 UI::Label(hint, hintX, hintY, 2.0f, 1.0f, 0.3f + pulse * 0.4f, 0.1f, 1.0f);
@@ -675,7 +676,7 @@ int main()
                 const float barW = 200.0f, barH = 16.0f;
                 float barX = (sw - barW) * 0.5f, barY = (float)sh - 62.0f;
                 char powerLabel[24];
-                snprintf(powerLabel, sizeof(powerLabel), "POWER  %d", (int)plen);
+                snprintf(powerLabel, sizeof(powerLabel), "Thrust to throw  %d", (int)plen);
                 UI::Label(powerLabel, barX, barY - UI::_font::textHeight(2.0f) - 2.0f,
                           2.0f, pr, pg, pb, 1.0f);
                 UI::ProgressBar(t, barX, barY, barW, barH, pr, pg, pb, 0.15f, 0.15f, 0.15f);
