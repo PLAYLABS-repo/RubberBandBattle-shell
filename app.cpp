@@ -585,15 +585,15 @@ int main()
         // ======================================================
         applyScreenSpace(sw, sh);
         UI::BeginFrame(sw, sh);
-
+#ifdef DEBUG
         // FPS counter
         {
             char fpsText[32];
-            snprintf(fpsText, sizeof(fpsText), "FPS: %.1f", currentFPS);
+            snprintf(fpsText, sizeof(fpsText), "Latency  %.1f", currentFPS);
             UI::Label(fpsText, (float)sw - UI::_font::textWidth(fpsText, 2.0f) - 14.0f, 18.0f,
                       2.0f, 0.3f, 1.0f, 0.3f, 1.0f);
         }
-
+#endif
         // HP bar
         {
             float fill = std::max(0.0f, std::min((float)player.hp / (float)player.maxHp, 1.0f));
@@ -687,7 +687,7 @@ int main()
                 float fill = 1.0f - (player.punchCooldown / PUNCH_COOLDOWN);
                 const float barW = 120.0f, barH = 12.0f;
                 float barX = (sw - barW) * 0.5f, barY = (float)sh - 92.0f;
-                UI::Label("PUNCH", barX, barY - UI::_font::textHeight(2.0f) - 1.0f,
+                UI::Label("Punch", barX, barY - UI::_font::textHeight(2.0f) - 1.0f,
                           2.0f, 1.0f, 0.5f, 0.1f, 1.0f);
                 UI::ProgressBar(fill, barX, barY, barW, barH, 1.0f, 0.4f, 0.0f, 0.15f, 0.15f, 0.15f);
             }
