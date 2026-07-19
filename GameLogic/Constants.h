@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
 
-static const float   PI             = 3.14159265f;
+static const float   PI             = 3.14f;
 static const float   BULLET_GRAVITY = 600.0f;
 static const float   MAX_POWER      = 900.0f;
 static const float   SHOOT_COOLDOWN = 0.15f;

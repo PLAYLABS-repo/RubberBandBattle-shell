@@ -44,12 +44,15 @@ int main()
     Sound* sfxJump  = CreateSound(); sfxJump->load("jump.wav");
     Sound* sfxPunch = CreateSound(); sfxPunch->load("punch.wav");
 
+    Player player;
     // ---- Assets ----
     Image* playersheet = PL_LoadImage("Resources/Skins/spritemap.png");
     Atlas* playeratlas = LoadAtlas("Resources/Skins/spritemap.json");
-
+        player.anim = CreateAnimator();
+    player.anim->load("Resources/Skins/Animation.json");
     // ---- Player ----
-    Player player;
+
+
     player.sprite                 = CreateSprite();
     player.sprite->image          = playersheet;
     player.sprite->atlas          = playeratlas;
@@ -59,8 +62,8 @@ int main()
     player.sprite->scale          = {1.0f, 1.0f};
     player.sprite->targetScale    = {1.0f, 1.0f};
 
-    player.anim = CreateAnimator();
-    if (player.anim->load("Resources/Skins/Animation.json"))
+
+
         Anim(player.anim, PLAYER, IDLE);
 
     // ---- Background ----
@@ -585,11 +588,11 @@ int main()
         // ======================================================
         applyScreenSpace(sw, sh);
         UI::BeginFrame(sw, sh);
-#ifdef DEBUG
+#ifdef _DEBUG
         // FPS counter
         {
             char fpsText[32];
-            snprintf(fpsText, sizeof(fpsText), "Latency  %.1f", currentFPS);
+            snprintf(fpsText, sizeof(fpsText), "FPS  %.1f", currentFPS);
             UI::Label(fpsText, (float)sw - UI::_font::textWidth(fpsText, 2.0f) - 14.0f, 18.0f,
                       2.0f, 0.3f, 1.0f, 0.3f, 1.0f);
         }
@@ -603,7 +606,7 @@ int main()
             const float barW = 220.0f, barH = 18.0f;
             const float bx   = 20.0f,  by   = (float)sh - 56.0f;
 
-            UI::Label("HP", bx, by, 2.0f, 0.4f, 1.0f, 0.4f, 1.0f);
+            UI::Label("Jealth", bx, by, 2.0f, 0.4f, 1.0f, 0.4f, 1.0f);
             UI::ProgressBar(fill, bx, by + 16.0f, barW, barH,
                             hr, hg, 0.1f, 0.15f, 0.15f, 0.15f);
 
@@ -624,7 +627,7 @@ int main()
             const float barW = 220.0f, barH = 14.0f;
             const float bx   = 20.0f,  by   = (float)sh - 90.0f;
 
-            UI::Label("ST", bx, by, 2.0f,
+            UI::Label("Stamina", bx, by, 2.0f,
                       sr, staminaExhausted ? 0.2f : 0.85f, 0.1f, 1.0f);
             UI::ProgressBar(stFill, bx, by + 16.0f, barW, barH,
                             sr, sg, sb, 0.15f, 0.15f, 0.15f);
