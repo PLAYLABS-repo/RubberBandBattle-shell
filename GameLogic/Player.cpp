@@ -2,7 +2,10 @@
 #include "PlaylabsGL.h"
 #include <windows.h>
 #include <algorithm>
-
+constexpr float Player::MAX_STAMINA;
+constexpr float Player::STAMINA_RUN_DRAIN;
+constexpr float Player::STAMINA_JMP_DRAIN;
+constexpr float Player::STAMINA_RECOVER;
 Player::Input Player::gatherInput(Window& window)
 {
     PollInput(&window);
@@ -16,6 +19,7 @@ Player::Input Player::gatherInput(Window& window)
     in.jumpPressed = KeyPressed(VK_SPACE) != 0;
     return in;
 }
+
 
 void Player::applyAnimationState(bool moving, bool canRun)
 {
@@ -121,20 +125,20 @@ Player::FrameEvents Player::update(float dt, const Input& input, const AABB& wal
 
     bool canRun = input.shiftHeld && !staminaExhausted;
 
-    if (canRun && moving)
+   if (canRun && moving)
+{
+    stamina -= STAMINA_RUN_DRAIN * dt;
+    if (stamina <= 0.0f)
     {
-        stamina -= STAMINA_RUN_DRAIN * dt;
-        if (stamina <= 0.0f)
-        {
-            stamina          = 0.0f;
-            staminaExhausted = true;
-            canRun           = false;
-        }
+        stamina          = 0.0f;
+        staminaExhausted = true;
+        canRun           = false;
     }
-    else if (!input.shiftHeld || !moving)
-    {
-        stamina = std::min(stamina + STAMINA_RECOVER * dt, MAX_STAMINA);
-    }
+}
+else
+{
+    stamina = std::min(stamina + Player::STAMINA_RECOVER * dt, MAX_STAMINA);
+}
 
     float currentSpeed = canRun ? speed * 1.7f : speed;
 

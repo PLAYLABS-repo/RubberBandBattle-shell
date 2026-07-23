@@ -5,10 +5,6 @@
 #include <cmath>
 #include "Constants.h"
 
-// =============================================================
-// DRAW HELPERS
-// =============================================================
-
 static void drawRect(float x, float y, float w, float h,
                      float r, float g, float b, float a = 1.0f)
 {
@@ -27,12 +23,6 @@ static void drawRect(float x, float y, float w, float h,
 
 
 
-
-
-
-// =============================================================
-// CAMERA HELPERS
-// =============================================================
 
 static void applyCamera2D(Camera& cam, int sw, int sh)
 {

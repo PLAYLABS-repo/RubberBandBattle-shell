@@ -2,7 +2,6 @@
 #include "Src/UI.h"
 #include <GL/gl.h>
 #include <cstdio>
-#include "Src/Shape.h"
 #include <algorithm>
 #include <windows.h>
 
@@ -46,7 +45,8 @@ int main()
     player.sprite->targetScale    = {1.0f, 1.0f};
 
     Anim(player.anim, PLAYER, IDLE);
-
+    Sound* bgm =  CreateSound();
+    bgm->load("bgm.wav");
     Sprite* background         = CreateSprite();
     background->image          = playersheet;
     background->atlas          = playeratlas;
@@ -59,7 +59,7 @@ int main()
     const float SPAWN_X = 200.0f;
     const float SPAWN_Y = 436.0f;
     player.resetToSpawn(SPAWN_X, SPAWN_Y);
-
+    bgm->play(true);
     while (window.process())
     {
         float dt = timer.delta();
@@ -130,7 +130,7 @@ int main()
         PL_Present(&window);
     }
 
-
+    DestroySound(bgm);
     DestroyAnimator(player.anim); DestroySprite(player.sprite);
     DestroySprite(background);
     FreeAtlas(playeratlas);       PL_FreeImage(playersheet);

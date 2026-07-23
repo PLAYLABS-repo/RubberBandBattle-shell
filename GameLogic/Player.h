@@ -2,6 +2,7 @@
 
 #include "DrawHelpers.h" // AABB, CollisionSide
 
+
 class Sprite;
 class TimelineAnimator;
 class Window;
@@ -24,8 +25,8 @@ struct Player
 
     // ---- Physics ----
     float velocityY = 0.0f;
-    float gravity   = 2000.0f;
-    float jumpForce =  -800.0f;
+    float gravity   = -2000.0f;
+    float jumpForce =  800.0f;
     float speed     =  300.0f;
     bool  jumping   = false;
 
