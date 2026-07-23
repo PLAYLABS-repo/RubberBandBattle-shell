@@ -2,20 +2,12 @@
 #include "Src/UI.h"
 #include <GL/gl.h>
 #include <cstdio>
-#include <vector>
-#include <cmath>
+#include "Src/Shape.h"
 #include <algorithm>
 #include <windows.h>
-#include <cstdint>
-#include <inttypes.h>
 
-#include "Constants.h"
 #include "DrawHelpers.h"
-#include "Bullet.h"
 #include "Player.h"
-#ifdef _DEBUG
-#include "DebugPanel.h"
-#endif
 // Build 0.0.19
 
 int main()
@@ -23,11 +15,7 @@ int main()
     Window window;
     if (!window.create("RubberBandBattle-Shell", 1280, 720))
         return -1;
-#ifdef _DEBUG
-    // ---- Debug panel ----
-    if (!DebugPanel_Init(GetModuleHandle(nullptr)))
-        MessageBoxA(nullptr, "DebugPanel failed to initialise.", "Warning", MB_OK | MB_ICONWARNING);
-#endif
+
     // ---- Font ----
     UI::_font::load("Resources/Font/newCardfont.ttf");
 
@@ -36,22 +24,17 @@ int main()
     main_cam.zoom     = 1.723f;
 
     Timer timer;
+#ifdef _DEBUG
     float fpsTimer = 0.0f, currentFPS = 0.0f;
     int   fpsFrames = 0;
-    float promptPulse = 0.0f;
-
-    Sound* bgm      = CreateSound(); bgm->load("bgm.wav");      bgm->play(true);
-    Sound* sfxJump  = CreateSound(); sfxJump->load("jump.wav");
-    Sound* sfxPunch = CreateSound(); sfxPunch->load("punch.wav");
+#endif
 
     Player player;
     // ---- Assets ----
     Image* playersheet = PL_LoadImage("Resources/Skins/spritemap.png");
     Atlas* playeratlas = LoadAtlas("Resources/Skins/spritemap.json");
-        player.anim = CreateAnimator();
+    player.anim = CreateAnimator();
     player.anim->load("Resources/Skins/Animation.json");
-    // ---- Player ----
-
 
     player.sprite                 = CreateSprite();
     player.sprite->image          = playersheet;
@@ -62,449 +45,44 @@ int main()
     player.sprite->scale          = {1.0f, 1.0f};
     player.sprite->targetScale    = {1.0f, 1.0f};
 
+    Anim(player.anim, PLAYER, IDLE);
 
-
-        Anim(player.anim, PLAYER, IDLE);
-
-    // ---- Background ----
     Sprite* background         = CreateSprite();
     background->image          = playersheet;
     background->atlas          = playeratlas;
-    background->frameName      = "0001";
+    background->frameName      = "0002";
     background->position       = {0.0f, 0.0f};
     background->targetPosition = {0.0f, 0.0f};
 
-    std::vector<Bullet> bullets;
-    bullets.reserve(64);
+    const AABB wallBox(100.0f, 100.0f, 100.0f, 100.0f);
 
-    bool prevMouseHeld  = false;
-    bool prevRMouseHeld = false;
+    const float SPAWN_X = 200.0f;
+    const float SPAWN_Y = 436.0f;
+    player.resetToSpawn(SPAWN_X, SPAWN_Y);
 
-    const float wX = 100.0f, wY = 100.0f, wW = 100.0f, wH = 100.0f;
-
-    // Animation state
-    Player::State lastAnimState = Player::State::IDLE;
-
-    // Death / respawn
-    bool  isDead           = false;
-    float respawnTimer     = 0.0f;
-    bool  deathAnimDone    = false;
-    float deathAnimTimer   = 0.0f;
-    const float RESPAWN_DELAY  = 3.0f;
-    const float DEATH_ANIM_DUR = 1.0f;
-
-    // Spawn position — mutable so debug panel sliders can change them
-    float SPAWN_X = 200.0f;
-    float SPAWN_Y = 436.0f;
-
-    // ---- Stamina ----
-    const float MAX_STAMINA       = 100.0f;
-    const float STAMINA_RUN_DRAIN =  20.0f; // per second while running
-    const float STAMINA_JMP_DRAIN =  15.0f; // flat cost per jump
-    const float STAMINA_RECOVER   =  12.0f; // per second when not running
-    float stamina = MAX_STAMINA;
-    bool  staminaExhausted = false;         // locked out of running until fully recovered
-
-    // ==========================================================
-    // GAME LOOP
-    // ==========================================================
     while (window.process())
     {
         float dt = timer.delta();
         if (dt > 0.05f) dt = 0.05f;
         Sleep(10);
 
+#ifdef _DEBUG
         fpsTimer += dt; ++fpsFrames;
         if (fpsTimer >= 1.0f)
         {
             currentFPS = fpsFrames / fpsTimer;
             fpsFrames  = 0; fpsTimer = 0.0f;
         }
-
-        PollInput(&window);
-        int sw = window.getWidth(), sh = window.getHeight();
-        promptPulse += dt;
-#ifdef _DEBUG
-        // ---- Debug panel tick + command dispatch ----
-        DebugPanel_Tick();
-        DebugPanel_PollCommands(
-            isDead ? nullptr : &player,
-            SPAWN_X, SPAWN_Y,
-            isDead,
-            (int)MAX_AMMO
-        );
-        DebugPanel_UpdateStatus(
-            (int)player.hp, (int)player.maxHp,
-            (int)player.ammo, (int)MAX_AMMO
-        );
 #endif
-        // ---- Death check ----
-        if (player.hp <= 0 && !isDead)
-        {
-            isDead         = true;
-            respawnTimer   = RESPAWN_DELAY;
-            deathAnimDone  = false;
-            deathAnimTimer = 0.0f;
-            Anim(player.anim, PLAYER, DIE);
-            lastAnimState  = Player::State::IDLE;
-        }
 
-        // ---- Respawn countdown ----
-        if (isDead)
-        {
-            respawnTimer -= dt;
-            if (respawnTimer <= 0.0f)
-            {
-                isDead       = false;
-                player.hp    = player.maxHp;
-                player.x     = SPAWN_X;
-                player.y     = SPAWN_Y;
-                player.baseY = SPAWN_Y;
-                player.velocityY = 0.0f;
-                player.jumping   = false;
-                player.punching  = false;
-                player.punchCooldown = 0.0f;
-                player.shootCooldown = 0.0f;
-                player.ammo  = MAX_AMMO;
-                stamina          = MAX_STAMINA;
-                staminaExhausted = false;
-                player.sprite->position       = {player.x, player.y};
-                player.sprite->targetPosition = {player.x, player.y};
-                deathAnimDone  = false;
-                deathAnimTimer = 0.0f;
-                Anim(player.anim, PLAYER, IDLE);
-                lastAnimState = Player::State::IDLE;
-            }
-        }
 
-        // ======================================================
-        // GAME LOGIC (only if alive)
-        // ======================================================
-        if (!isDead)
-        {
-            // ---- Shift held: walk vs run ----
-            bool shiftHeld = KeyDown(VK_SHIFT) != 0;
+        Player::Input in = Player::gatherInput(window);
+        int sw = window.getWidth(), sh = window.getHeight();
 
-            // ---- Stamina: exhaustion lock-out until fully recovered ----
-            if (staminaExhausted && stamina >= MAX_STAMINA)
-                staminaExhausted = false;
+        player.update(dt, in, wallBox);
 
-            // ---- Mouse position + window bounds check ----
-            int mousePixelX = 0, mousePixelY = 0;
-            MousePos(&mousePixelX, &mousePixelY);
-
-            bool mouseInWindow = (mousePixelX >= 0 && mousePixelX < sw &&
-                                  mousePixelY >= 0 && mousePixelY < sh);
-
-            float mouseWorldX, mouseWorldY;
-            screenToWorld((float)mousePixelX, (float)mousePixelY,
-                          main_cam, sw, sh, mouseWorldX, mouseWorldY);
-
-            float pullDX  = mouseWorldX - player.muzzleX();
-            float pullDY  = mouseWorldY - player.muzzleY();
-            float pullLen = sqrtf(pullDX * pullDX + pullDY * pullDY);
-
-            if (pullLen > 0.001f)
-            {
-                player.aimDirX = -pullDX / pullLen;
-                player.aimDirY = -pullDY / pullLen;
-            }
-
-            player.facingX = (pullDX >= 0.0f) ? 1.0f : -1.0f;
-
-            player.shootCooldown -= dt;
-            player.punchCooldown -= dt;
-
-            // ---- Left-click: shoot (ignored outside window) ----
-            bool mouseHeld   = (mouseInWindow && KeyDown(VK_LBUTTON)) != 0;
-            bool justClicked = mouseHeld && !prevMouseHeld;
-            prevMouseHeld    = mouseHeld;
-
-            if (player.ammo > 0 && justClicked && player.shootCooldown <= 0.0f)
-            {
-                Bullet b;
-                b.x    = player.muzzleX() - 24.0f;
-                b.y    = player.muzzleY() - 24.0f;
-                b.velX = player.aimDirX * pullLen;
-                b.velY = player.aimDirY * pullLen;
-                b.sprite                 = CreateSprite();
-                b.sprite->image          = playersheet;
-                b.sprite->atlas          = playeratlas;
-                b.sprite->frameName      = "0000";
-                b.sprite->scale          = {player.facingX, 1.0f};
-                b.sprite->targetScale    = {player.facingX, 1.0f};
-                b.sprite->position       = {b.x, b.y};
-                b.sprite->targetPosition = {b.x, b.y};
-                bullets.push_back(b);
-                --player.ammo;
-                player.shootCooldown = SHOOT_COOLDOWN;
-                Event("bullet_fired", &player, &bullets.back());
-            }
-
-            // ---- Right-click: punch (ignored outside window) ----
-            bool rMouseHeld   = (mouseInWindow && KeyDown(VK_RBUTTON)) != 0;
-            bool rJustPressed = rMouseHeld && !prevRMouseHeld;
-            prevRMouseHeld    = rMouseHeld;
-
-            if (rJustPressed && !player.punching && player.punchCooldown <= 0.0f && !player.jumping)
-            {
-                player.punching   = true;
-                player.punchTimer = 0.0f;
-                player.punchHit   = false;
-                Anim(player.anim, PLAYER, PUNCH);
-                lastAnimState = Player::State::PUNCH;
-                sfxPunch->play(false);
-                Event("punch_started", &player);
-            }
-
-            // ---- WASD: movement ----
-            bool  moving = false;
-            float moveX  = 0.0f, moveY = 0.0f;
-
-            if (KeyDown(VK_RIGHT) || KeyDown('D')) { moveX =  1.0f; moving = true; }
-            if (KeyDown(VK_LEFT)  || KeyDown('A')) { moveX = -1.0f; moving = true; }
-
-            if (!player.jumping && !player.punching)
-            {
-                if (KeyDown(VK_UP)   || KeyDown('W')) { moveY = -1.0f; moving = true; }
-                if (KeyDown(VK_DOWN) || KeyDown('S')) { moveY =  1.0f; moving = true; }
-            }
-
-            // ---- Speed: walk normally, run with shift ----
-            // Can't run while exhausted
-            bool canRun = shiftHeld && !staminaExhausted;
-
-            // Drain while running + moving, recover otherwise
-            if (canRun && moving)
-            {
-                stamina -= STAMINA_RUN_DRAIN * dt;
-                if (stamina <= 0.0f)
-                {
-                    stamina          = 0.0f;
-                    staminaExhausted = true;
-                    canRun           = false;
-                }
-            }
-            else if (!shiftHeld || !moving)
-            {
-                stamina = std::min(stamina + STAMINA_RECOVER * dt, MAX_STAMINA);
-            }
-
-            float currentSpeed = canRun ? player.speed * 1.7f : player.speed;
-
-            // ---- Space: jump ----
-            if (KeyPressed(VK_SPACE) && !player.jumping && !player.punching)
-            {
-                player.baseY     = player.y;
-                player.velocityY = player.jumpForce;
-                player.jumping   = true;
-
-                // Flat stamina cost per jump
-                stamina -= STAMINA_JMP_DRAIN;
-                if (stamina <= 0.0f)
-                {
-                    stamina          = 0.0f;
-                    staminaExhausted = true;
-                }
-
-                Anim(player.anim, PLAYER, JUMP);
-                lastAnimState = Player::State::JUMP;
-                sfxJump->play(false);
-                Event("player_jumped", &player);
-            }
-
-            // ---- Punch tick ----
-            if (player.punching)
-            {
-                player.punchTimer += dt;
-
-                if (!player.punchHit)
-                {
-                    float phx, phy, phw, phh;
-                    player.getPunchHitbox(phx, phy, phw, phh);
-                    if (AABBIntersects(phx, phy, phw, phh, wX, wY, wW, wH))
-                    {
-                        player.punchHit = true;
-                        Event("punch_hit", &player);
-                    }
-                }
-
-                if (player.punchTimer >= PUNCH_DURATION)
-                {
-                    player.punching      = false;
-                    player.punchCooldown = PUNCH_COOLDOWN;
-                }
-            }
-
-            // ---- Physics ----
-            if (!player.punching)
-                player.x += moveX * currentSpeed * dt;
-
-            if (!player.jumping)
-            {
-                if (!player.punching)
-                {
-                    player.y += moveY * currentSpeed * dt;
-                    player.y  = std::max(player.minY, std::min(player.y, player.maxY - player.h));
-                }
-                player.baseY = player.y;
-            }
-            else
-            {
-                player.velocityY += player.gravity * dt;
-                player.y         += player.velocityY * dt;
-                if (player.y >= player.baseY)
-                {
-                    player.y         = player.baseY;
-                    player.velocityY = 0.0f;
-                    player.jumping   = false;
-
-                    if (!player.punching)
-                    {
-                        if (moving && canRun && lastAnimState != Player::State::RUN)
-                        {
-                            Anim(player.anim, PLAYER, RUN);
-                            lastAnimState = Player::State::RUN;
-                        }
-                        else if (moving && !canRun && lastAnimState != Player::State::WALK)
-                        {
-                            Anim(player.anim, PLAYER, WALK);
-                            lastAnimState = Player::State::WALK;
-                        }
-                        else if (!moving && lastAnimState != Player::State::IDLE)
-                        {
-                            Anim(player.anim, PLAYER, IDLE);
-                            lastAnimState = Player::State::IDLE;
-                        }
-                    }
-
-                    Event("player_landed", &player);
-                }
-            }
-
-            // ---- Sprite transforms ----
-            player.sprite->position       = {player.x, player.y};
-            player.sprite->targetPosition = {player.x, player.y};
-            player.sprite->scale          = {player.facingX, 1.0f};
-            player.sprite->targetScale    = {player.facingX, 1.0f};
-
-            SetAnimatorParent(player.anim, player.x, player.y, 0.0f, player.facingX, 1.0f);
-
-            // ---- Animation priority block ----
-            if (!player.jumping && !player.punching)
-            {
-                if (moving && canRun && lastAnimState != Player::State::RUN)
-                {
-                    Anim(player.anim, PLAYER, RUN);
-                    lastAnimState = Player::State::RUN;
-                }
-                else if (moving && !canRun && lastAnimState != Player::State::WALK)
-                {
-                    Anim(player.anim, PLAYER, WALK);
-                    lastAnimState = Player::State::WALK;
-                }
-                else if (!moving && lastAnimState != Player::State::IDLE)
-                {
-                    Anim(player.anim, PLAYER, IDLE);
-                    lastAnimState = Player::State::IDLE;
-                }
-            }
-
-            // ---- Camera follow ----
-            main_cam.position.x += (player.x - (float)sw * 0.5f + 340.0f - main_cam.position.x) * 5.0f * dt;
-            main_cam.position.y += (player.y - (float)sh * 0.5f + 280.0f - main_cam.position.y) * 5.0f * dt;
-
-            // ---- Bullet update ----
-            for (Bullet& b : bullets)
-            {
-                if (b.dead) continue;
-                b.velY += BULLET_GRAVITY * dt;
-                b.x    += b.velX * dt;
-                b.y    += b.velY * dt;
-                b.sprite->position       = {b.x, b.y};
-                b.sprite->targetPosition = {b.x, b.y};
-                if (b.sprite) b.sprite->update(dt);
-                b.life -= dt;
-                if (b.life <= 0.0f) { b.dead = true; continue; }
-
-                if (AABBIntersects(b.hitX(), b.hitY(), b.hitW, b.hitH, wX, wY, wW, wH))
-                {
-                    b.dead = true;
-                    Event("bullet_hit_wall", nullptr, &b);
-                    continue;
-                }
-
-                float phbX = player.x + (player.w - 100.0f) * 0.5f;
-                float phbY = player.y + player.h;
-                if (AABBIntersects(b.hitX(), b.hitY(), b.hitW, b.hitH, phbX, phbY, 100.0f, 200.0f))
-                {
-                    b.dead     = true;
-                    player.hp -= BULLET_DAMAGE;
-                    if (player.hp < 0) player.hp = 0;
-                    Event("bullet_hit_player", nullptr, &b);
-                }
-            }
-
-            // Clean dead bullets
-            for (Bullet& b : bullets)
-                if (b.dead && b.sprite) { DestroySprite(b.sprite); b.sprite = nullptr; }
-            bullets.erase(std::remove_if(bullets.begin(), bullets.end(),
-                                         [](const Bullet& b){ return b.dead; }), bullets.end());
-
-            // ---- Wall collision ----
-            float phbX = player.x + (player.w - 100.0f) * 0.5f, phbY = player.y + player.h;
-            float phbW = player.jumping ? 60.0f : 100.0f,        phbH = player.jumping ? 100.0f : 200.0f;
-
-            AABB playerBox(phbX, phbY, phbW, phbH);
-            AABB wallBox(wX, wY, wW, wH);
-
-            CollisionSide side = playerBox.getCollisionSide(wallBox);
-            switch (side)
-            {
-                case CollisionSide::Top:
-                    player.y         = wY - phbH - player.h;
-                    player.baseY     = player.y;
-                    player.velocityY = 0.0f;
-                    player.jumping   = false;
-                    if (!player.punching)
-                    {
-                        if (moving && canRun && lastAnimState != Player::State::RUN)
-                        {
-                            Anim(player.anim, PLAYER, RUN);
-                            lastAnimState = Player::State::RUN;
-                        }
-                        else if (moving && !canRun && lastAnimState != Player::State::WALK)
-                        {
-                            Anim(player.anim, PLAYER, WALK);
-                            lastAnimState = Player::State::WALK;
-                        }
-                        else if (!moving && lastAnimState != Player::State::IDLE)
-                        {
-                            Anim(player.anim, PLAYER, IDLE);
-                            lastAnimState = Player::State::IDLE;
-                        }
-                    }
-                    Event("player_landed", &player);
-                    break;
-
-                case CollisionSide::Bottom:
-                    player.velocityY = 0.0f;
-                    player.y         = wY + wH - player.h;
-                    break;
-
-                case CollisionSide::Left:
-                case CollisionSide::Right:
-                    player.x -= moveX * currentSpeed * dt;
-                    break;
-
-                case CollisionSide::None:
-                    break;
-            }
-
-            player.sprite->position       = {player.x, player.y};
-            player.sprite->targetPosition = {player.x, player.y};
-
-        } // end !isDead
+        main_cam.position.x += (player.x - (float)sw * 0.5f + 340.0f - main_cam.position.x) * 5.0f * dt;
+        main_cam.position.y += (player.y - (float)sh * 0.5f + 280.0f - main_cam.position.y) * 5.0f * dt;
 
         // ======================================================
         // RENDER — world
@@ -516,72 +94,8 @@ int main()
 
         background->update(dt); background->draw(main_cam);
 
-        for (Bullet& b : bullets) if (b.sprite) b.sprite->draw(main_cam);
-
-        if (!isDead)
-        {
-            player.sprite->update(dt); player.sprite->draw(main_cam);
-            TickAnimator(player.anim, dt, playersheet, playeratlas, &main_cam);
-        }
-        else
-        {
-            SetAnimatorParent(player.anim, player.x, player.y, 0.0f, player.facingX, 1.0f);
-            if (!deathAnimDone)
-            {
-                deathAnimTimer += dt;
-                TickAnimator(player.anim, dt, playersheet, playeratlas, &main_cam);
-                if (deathAnimTimer >= DEATH_ANIM_DUR)
-                    deathAnimDone = true;
-            }
-            else
-            {
-                TickAnimator(player.anim, 0.0f, playersheet, playeratlas, &main_cam);
-            }
-        }
-
-        // Debug hitboxes (alive only)
-        if (!isDead)
-        {
-            float dbgX = player.x + (player.w - 100.0f) * 0.5f, dbgY = player.y + player.h;
-            float dbgW = player.jumping ? 60.0f : 100.0f, dbgH = player.jumping ? 100.0f : 200.0f;
-            drawRect(wX,   wY,   wW,   wH,   1.0f, 0.0f, 0.0f, 0.5f);
-            drawRect(dbgX, dbgY, dbgW, dbgH, 0.0f, 1.0f, 0.5f, 0.4f);
-        }
-
-        if (player.punching && !isDead)
-        {
-            float px, py, pw, ph;
-            player.getPunchHitbox(px, py, pw, ph);
-            drawRect(px, py, pw, ph,
-                     player.punchHit ? 1.0f : 0.3f,
-                     player.punchHit ? 0.2f : 0.6f,
-                     player.punchHit ? 0.2f : 0.0f,
-                     player.punchHit ? 0.9f : 0.55f);
-        }
-
-        // Spawn point crosshair (always visible in world space)
-        {
-            const float cs = 12.0f;
-            drawLine(SPAWN_X - cs, SPAWN_Y, SPAWN_X + cs, SPAWN_Y, 0.2f, 1.0f, 0.4f, 0.8f, 1.5f);
-            drawLine(SPAWN_X, SPAWN_Y - cs, SPAWN_X, SPAWN_Y + cs, 0.2f, 1.0f, 0.4f, 0.8f, 1.5f);
-        }
-
-        // Arc preview (alive + ammo only)
-        if (!isDead && player.ammo > 0)
-        {
-            int mx, my;
-            MousePos(&mx, &my);
-            float mwx, mwy;
-            screenToWorld((float)mx, (float)my, main_cam, sw, sh, mwx, mwy);
-            float pdx  = mwx - player.muzzleX();
-            float pdy  = mwy - player.muzzleY();
-            float plen = sqrtf(pdx*pdx + pdy*pdy);
-            float t    = std::min(plen / MAX_POWER, 1.0f);
-            float pr   = 0.2f + t*0.8f, pg = 0.8f - t*0.6f, pb = 1.0f - t;
-            drawLine(player.muzzleX(), player.muzzleY(), mwx, mwy, 0.9f, 0.7f, 0.2f, 0.6f, 1.5f);
-            drawArcPreview(player.muzzleX(), player.muzzleY(),
-                           player.aimDirX * plen, player.aimDirY * plen, pr, pg, pb);
-        }
+        player.sprite->update(dt); player.sprite->draw(main_cam);
+        TickAnimator(player.anim, dt, playersheet, playeratlas, &main_cam);
 
         // ======================================================
         // RENDER — HUD
@@ -589,7 +103,6 @@ int main()
         applyScreenSpace(sw, sh);
         UI::BeginFrame(sw, sh);
 #ifdef _DEBUG
-        // FPS counter
         {
             char fpsText[32];
             snprintf(fpsText, sizeof(fpsText), "FPS  %.1f", currentFPS);
@@ -597,118 +110,29 @@ int main()
                       2.0f, 0.3f, 1.0f, 0.3f, 1.0f);
         }
 #endif
-        // HP bar
-        {
-            float fill = std::max(0.0f, std::min((float)player.hp / (float)player.maxHp, 1.0f));
-            float hr   = (fill > 0.5f) ? (1.0f - fill) * 2.0f : 1.0f;
-            float hg   = (fill > 0.5f) ? 1.0f : fill * 2.0f;
-
-            const float barW = 220.0f, barH = 18.0f;
-            const float bx   = 20.0f,  by   = (float)sh - 56.0f;
-
-            UI::Label("Jealth", bx, by, 2.0f, 0.4f, 1.0f, 0.4f, 1.0f);
-            UI::ProgressBar(fill, bx, by + 16.0f, barW, barH,
-                            hr, hg, 0.1f, 0.15f, 0.15f, 0.15f);
-
-            char hpBuf[24];
-            snprintf(hpBuf, sizeof(hpBuf), "%d / %d", (int)player.hp, (int)player.maxHp);
-            UI::Label(hpBuf, bx + barW + 8.0f, by + 18.0f, 2.0f, 1, 1, 1, 0.9f);
-        }
-
         // Stamina bar
-        if (!isDead)
         {
-            float stFill = std::max(0.0f, std::min(stamina / MAX_STAMINA, 1.0f));
-            // Yellow-white when full, orange when mid, red when exhausted
+            float stFill = std::max(0.0f, std::min(player.stamina / Player::MAX_STAMINA, 1.0f));
             float sr = 1.0f;
-            float sg = staminaExhausted ? 0.15f : (0.3f + stFill * 0.7f);
-            float sb = staminaExhausted ? 0.05f : (stFill * 0.2f);
+            float sg = player.staminaExhausted ? 0.15f : (0.3f + stFill * 0.7f);
+            float sb = player.staminaExhausted ? 0.05f : (stFill * 0.2f);
 
             const float barW = 220.0f, barH = 14.0f;
             const float bx   = 20.0f,  by   = (float)sh - 90.0f;
 
             UI::Label("Stamina", bx, by, 2.0f,
-                      sr, staminaExhausted ? 0.2f : 0.85f, 0.1f, 1.0f);
+                      sr, player.staminaExhausted ? 0.2f : 0.85f, 0.1f, 1.0f);
             UI::ProgressBar(stFill, bx, by + 16.0f, barW, barH,
                             sr, sg, sb, 0.15f, 0.15f, 0.15f);
-        }
-
-        // Respawn countdown
-        if (isDead)
-        {
-            char respawnBuf[32];
-            int  secsLeft = (int)ceilf(respawnTimer);
-            snprintf(respawnBuf, sizeof(respawnBuf), "Died... respawn in %d...", secsLeft);
-            float rw = UI::_font::textWidth(respawnBuf, 3.0f);
-            UI::Label(respawnBuf, (sw - rw) * 0.5f, sh * 0.5f, 3.0f, 1.0f, 0.6f, 0.1f, 1.0f);
-        }
-
-        // Ammo / power / punch UI (alive only)
-        if (!isDead)
-        {
-            bool outOfAmmo = (player.ammo <= 0);
-            char countBuf[32];
-            snprintf(countBuf, sizeof(countBuf), "Magazine  %d / %d", (int)player.ammo, (int)MAX_AMMO);
-            //note: magazine means gun magazine
-            float labelW = UI::_font::textWidth(countBuf, 2.0f);
-            float labelX = (sw - labelW) * 0.5f;
-            float labelY = (float)sh - 34.0f;
-            UI::Label(countBuf, labelX, labelY, 2.0f,
-                      1.0f, outOfAmmo ? 0.2f : 0.9f, 0.2f, 1.0f);
-
-            if (outOfAmmo)
-            {
-                float pulse = fabsf(sinf(promptPulse * 3.0f));
-                const char* hint = "[ Punching";
-                float hintX = (sw - UI::_font::textWidth(hint, 2.0f)) * 0.5f;
-                float hintY = labelY - UI::_font::textHeight(2.0f) - 16.0f;
-                UI::Label(hint, hintX, hintY, 2.0f, 1.0f, 0.3f + pulse * 0.4f, 0.1f, 1.0f);
-            }
-
-            if (player.ammo > 0)
-            {
-                int mx, my;
-                MousePos(&mx, &my);
-                float mwx, mwy;
-                screenToWorld((float)mx, (float)my, main_cam, sw, sh, mwx, mwy);
-                float pdx  = mwx - player.muzzleX();
-                float pdy  = mwy - player.muzzleY();
-                float plen = sqrtf(pdx*pdx + pdy*pdy);
-                float t    = std::min(plen / MAX_POWER, 1.0f);
-                float pr   = 0.2f + t*0.8f, pg = 0.8f - t*0.6f, pb = 1.0f - t;
-                const float barW = 200.0f, barH = 16.0f;
-                float barX = (sw - barW) * 0.5f, barY = (float)sh - 62.0f;
-                char powerLabel[24];
-                snprintf(powerLabel, sizeof(powerLabel), "Thrust to throw  %d", (int)plen);
-                UI::Label(powerLabel, barX, barY - UI::_font::textHeight(2.0f) - 2.0f,
-                          2.0f, pr, pg, pb, 1.0f);
-                UI::ProgressBar(t, barX, barY, barW, barH, pr, pg, pb, 0.15f, 0.15f, 0.15f);
-            }
-
-            if (player.punchCooldown > 0.0f)
-            {
-                float fill = 1.0f - (player.punchCooldown / PUNCH_COOLDOWN);
-                const float barW = 120.0f, barH = 12.0f;
-                float barX = (sw - barW) * 0.5f, barY = (float)sh - 92.0f;
-                UI::Label("Punch", barX, barY - UI::_font::textHeight(2.0f) - 1.0f,
-                          2.0f, 1.0f, 0.5f, 0.1f, 1.0f);
-                UI::ProgressBar(fill, barX, barY, barW, barH, 1.0f, 0.4f, 0.0f, 0.15f, 0.15f, 0.15f);
-            }
         }
 
         UI::EndFrame();
         PL_Present(&window);
     }
 
-    // ---- Cleanup ----
-    for (Bullet& b : bullets) if (b.sprite) DestroySprite(b.sprite);
-    EventClear();
+
     DestroyAnimator(player.anim); DestroySprite(player.sprite);
     DestroySprite(background);
-    DestroySound(sfxPunch); DestroySound(sfxJump); DestroySound(bgm);
     FreeAtlas(playeratlas);       PL_FreeImage(playersheet);
-#ifdef _DEBUG
-    DebugPanel_Destroy();
-#endif
     return 0;
 }

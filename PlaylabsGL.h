@@ -9,7 +9,7 @@
 #include "Input.h"
 #include "Timer.h"
 #include "Window.h"
-#include "TimelineAnimator.h"
+#include "Animator.h"
 
 extern "C"
 {

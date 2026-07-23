@@ -1,57 +1,80 @@
-
 #pragma once
-#include "PlaylabsGL.h"
-#include "Constants.h"
 
-// =============================================================
-// PLAYER
-// =============================================================
+#include "DrawHelpers.h" // AABB, CollisionSide
+
+class Sprite;
+class TimelineAnimator;
+class Window;
+
+// ============================================================
+// Player
+// Pure movement: walk/run/jump, stamina, gravity, wall collision,
+// and the animation state that follows from them. No combat,
+// no health, no death/respawn.
+// ============================================================
 struct Player
 {
-    float x     = 200.0f;
-    float y     = 436.0f;
-    float w     = 64.0f;
-    float h     = 64.0f;
-    float speed = 200.0f;
+    enum class State { IDLE, WALK, RUN, JUMP };
 
-    float minY = 100.0f;
-    float maxY = 500.0f;
+    // ---- Transform ----
+    float x = 0.0f, y = 0.0f;
+    float w = 100.0f, h = 200.0f;
+    float minY = 0.0f, maxY = 1000.0f;
+    float baseY = 0.0f;
 
-    float baseY     = 436.0f;
+    // ---- Physics ----
     float velocityY = 0.0f;
-    float gravity   = 900.0f;
-    float jumpForce = -520.0f;
+    float gravity   = 2000.0f;
+    float jumpForce =  -800.0f;
+    float speed     =  300.0f;
     bool  jumping   = false;
 
-    float chargeTimer   = 0.0f;
-    float shootCooldown = 0.0f;
-    int   ammo          = MAX_AMMO;
-
-    int hp    = PLAYER_MAX_HP;
-    int maxHp = PLAYER_MAX_HP;
-
-    float aimDirX = 1.0f;
-    float aimDirY = 0.0f;
-
-    bool  punching      = false;
-    float punchTimer    = 0.0f;
-    float punchCooldown = 0.0f;
-    bool  punchHit      = false;
-
-    Sprite*           sprite = nullptr;
-    TimelineAnimator* anim   = nullptr;
-
-    enum class State { IDLE, RUN, JUMP, PUNCH, DEAD, WALK } state = State::IDLE;
     float facingX = 1.0f;
 
-    float muzzleX() const { return x + w * 0.5f; }
-    float muzzleY() const { return y + h * 0.5f; }
+    // ---- Stamina (gates running) ----
+    static constexpr float MAX_STAMINA       = 100.0f;
+    static constexpr float STAMINA_RUN_DRAIN =  20.0f; // per second while running
+    static constexpr float STAMINA_JMP_DRAIN =  15.0f; // flat cost per jump
+    static constexpr float STAMINA_RECOVER   =  12.0f; // per second when not running
+    float stamina          = MAX_STAMINA;
+    bool  staminaExhausted = false;
 
-    void getPunchHitbox(float& hx, float& hy, float& hw, float& hh) const
+    // ---- Animation / visuals ----
+    State     lastAnimState = State::IDLE;
+    TimelineAnimator* anim = nullptr;
+    Sprite*   sprite = nullptr;
+
+    // ---- Per-frame input snapshot; main() fills this in from KeyDown/KeyPressed ----
+    struct Input
     {
-        hw = PUNCH_RANGE;
-        hh = 200.0f;
-        hx = (facingX < 0.0f) ? x + w : x - hw;
-        hy = y + h;
-    }
+        bool moveLeft = false, moveRight = false;
+        bool moveUp   = false, moveDown  = false;
+        bool shiftHeld   = false;
+        bool jumpPressed = false; // KeyPressed(VK_SPACE) this frame
+    };
+
+    // Things that happened this frame that main() may want to react to (sfx, Event() calls)
+    struct FrameEvents
+    {
+        bool jumped = false;
+        bool landed = false;
+    };
+
+    // Polls the window and reads the movement/run/jump keys into an Input
+    // snapshot for this frame. Call once per frame before update().
+    static Input gatherInput(Window& window);
+
+    // Runs movement input, stamina, jump trigger, gravity/physics,
+    // wall collision, and animation-state selection for one frame.
+    // wallBox is the obstacle the player can land on / bump into.
+    FrameEvents update(float dt, const Input& input, const AABB& wallBox);
+
+    // Places the player at a given position with a clean movement state.
+    void resetToSpawn(float spawnX, float spawnY);
+
+private:
+    void applyAnimationState(bool moving, bool canRun);
+    void applyPhysics(float dt, float moveX, float moveY, bool moving, bool canRun, bool& outLanded);
+    void resolveWallCollision(const AABB& wallBox, float moveX, float currentSpeed, float dt,
+                              bool moving, bool canRun, bool& outLanded);
 };

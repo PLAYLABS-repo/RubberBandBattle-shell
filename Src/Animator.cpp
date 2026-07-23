@@ -1,4 +1,4 @@
-#include "TimelineAnimator.h"
+#include "Animator.h"
 #include "Image.h"
 #include "Atlas.h"
 #include "Camera.h"
