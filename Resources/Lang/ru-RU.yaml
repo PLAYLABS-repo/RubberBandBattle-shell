@@ -4,8 +4,9 @@ game:
     label: undefined
     message:
       death: Ты умер, это очень печально.
-    round: Округлить {0}
+    round: Округлить  %s
     stamina: Спешка
   start:
+    greet: Привет, %2s!
     offline: Автономный режим
     play: Начинать

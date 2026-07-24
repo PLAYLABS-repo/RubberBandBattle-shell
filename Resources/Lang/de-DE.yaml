@@ -4,8 +4,9 @@ game:
     label: undefined
     message:
       death: Du bist gestorben, zu traurig.
-    round: Runde {0}
+    round: Runde  %s
     stamina: Eile
   start:
+    greet: Hallo, %2s!
     offline: Offline-Modus
     play: Start

@@ -4,8 +4,9 @@ game:
     label: undefined
     message:
       death: Moriste, qué triste.
-    round: Ronda {0}
+    round: Ronda  %s
     stamina: Prisa
   start:
+    greet: Hola, %2s !
     offline: Modo sin conexión
     play: Comenzar

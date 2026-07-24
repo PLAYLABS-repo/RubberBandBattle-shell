@@ -94,7 +94,8 @@ int main()
 
         player.sprite->update(dt); player.sprite->draw(main_cam);
         TickAnimator(player.anim, dt, playersheet, playeratlas, &main_cam);
-
+float screenX = (player.x - main_cam.position.x - 580) * main_cam.zoom + sw * 0.5f;
+float screenY = (player.y - main_cam.position.y + -300) * main_cam.zoom + sh * 0.5f;
         // ======================================================
         // RENDER — HUD
         // ======================================================
@@ -105,10 +106,15 @@ int main()
             char fpsText[32];
             snprintf(fpsText, sizeof(fpsText), "FPS  %.1f", currentFPS);
             UI::Label(fpsText, (float)sw - UI::_font::textWidth(fpsText, 2.0f) - 14.0f, 18.0f,
-                      2.0f, 0.3f, 1.0f, 0.3f, 1.0f);
+                      2.0f, 0.3f, 1.0f, 0.3f);
         }
 #endif
         // Stamina bar
+        UI::Label("Player",
+          screenX - UI::_font::textWidth("Player", 2.0f) * 0.5f,
+          screenY - 30.0f,
+          2.0f,
+          1.0f, 1.0f, 0.0f);
         {
             float stFill = std::max(0.0f, std::min(player.stamina / Player::MAX_STAMINA, 1.0f));
             float sr = 1.0f;

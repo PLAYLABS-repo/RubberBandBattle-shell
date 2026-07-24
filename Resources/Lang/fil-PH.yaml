@@ -3,9 +3,10 @@ game:
     ammo: Bala
     label: undefined
     message:
-      death: Namatay ka, nakakalungkot din.
-    round: Laro {0}
+      death: Namatay ka, nakakalungkot.
+    round: Laro  %s
     stamina: Pagmamadali
   start:
+    greet: Kumusta, %2s!
     offline: Laro na offline
     play: Maglaro

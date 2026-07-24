@@ -29,6 +29,7 @@
 #include <cstring>
 #include <cmath>
 #include <cstdio>
+#include <cstdarg>
 
 #include "PlaylabsGL.h"   // EventBus, EventData, Image, MousePos, KeyDown …
 #include "include/stb_truetype.h"
@@ -617,16 +618,29 @@ namespace UI
     }
 
     // ── Label ────────────────────────────────────────────────
-    inline void Label(const std::string& text,
-                      float x, float y,
-                      float scale = 2.0f,
-                      float r = 1, float g = 1, float b = 1, float a = 1)
-    {
-        glDisable(GL_TEXTURE_2D);
-        _font::drawText(text, x, y, scale, r, g, b, a);
-        glEnable(GL_TEXTURE_2D);
-    }
+inline void Label(const std::string& text,
+                  float x, float y,
+                  float scale = 2.0f,
+                  float r = 1, float g = 1,
+                  float b = 1, float a = 1)
+{
+    glDisable(GL_TEXTURE_2D);
+    _font::drawText(text, x, y, scale, r, g, b, a);
+    glEnable(GL_TEXTURE_2D);
+}
+inline void Label(float x, float y,
+                  const char* fmt,
+                  ...)
+{
+    char buffer[1024];
 
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(buffer, sizeof(buffer), fmt, args);
+    va_end(args);
+
+    Label(std::string(buffer), x, y);
+}
     // ── Button ───────────────────────────────────────────────
     inline bool Button(const std::string& label,
                        float x, float y, float w, float h,

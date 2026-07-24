@@ -1,0 +1,12 @@
+game:
+  main:
+    ammo: Bala
+    label: undefined
+    message:
+      death: Napatay kaw, kaluluoy lang...
+    round: Hampang %s
+    stamina: Kadasigun
+  start:
+    greet: Hallo du gagu kaw, %s!
+    offline: Oplaiyn
+    play: Maghapang

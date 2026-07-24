@@ -7,5 +7,6 @@ game:
     round: 轮数 {0}
     stamina: 匆忙
   start:
+    greet: 你好，%2s！
     offline: 离线模式
     play: 开始
