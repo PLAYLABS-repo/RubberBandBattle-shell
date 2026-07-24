@@ -16,7 +16,7 @@ int main()
         return -1;
 
     // ---- Font ----
-    UI::_font::load("Resources/Font/newCardfont.ttf");
+    UI::_font::load("Resources/Font/Confale.ttf");
 
     Camera main_cam;
     main_cam.position = {0.0f, 0.0f};
@@ -34,6 +34,7 @@ int main()
     Atlas* playeratlas = LoadAtlas("Resources/Skins/spritemap.json");
     player.anim = CreateAnimator();
     player.anim->load("Resources/Skins/Animation.json");
+    Image* ground =PL_LoadImage("Resources/Texture/BGDebug.png");
 
     player.sprite                 = CreateSprite();
     player.sprite->image          = playersheet;
@@ -42,17 +43,15 @@ int main()
     player.sprite->position       = {player.x, player.y};
     player.sprite->targetPosition = {player.x, player.y};
     player.sprite->scale          = {1.0f, 1.0f};
-    player.sprite->targetScale    = {1.0f, 1.0f};
 
     Anim(player.anim, PLAYER, IDLE);
     Sound* bgm =  CreateSound();
     bgm->load("bgm.wav");
     Sprite* background         = CreateSprite();
-    background->image          = playersheet;
-    background->atlas          = playeratlas;
-    background->frameName      = "0002";
-    background->position       = {0.0f, 0.0f};
-    background->targetPosition = {0.0f, 0.0f};
+    background->image          = ground;
+    background->position       = (0.0f,0.0f);
+    background->skewX          = 0.0f;
+
 
     const AABB wallBox(100.0f, 100.0f, 100.0f, 100.0f);
 
@@ -75,7 +74,6 @@ int main()
         }
 #endif
 
-
         Player::Input in = Player::gatherInput(window);
         int sw = window.getWidth(), sh = window.getHeight();
 
@@ -90,7 +88,7 @@ int main()
         PL_Clear(0.12f, 0.12f, 0.18f, 1.0f);
         applyCamera2D(main_cam, sw, sh);
 
-        drawRect(0, player.maxY, 2000, 64, 0.25f, 0.20f, 0.15f);
+
 
         background->update(dt); background->draw(main_cam);
 

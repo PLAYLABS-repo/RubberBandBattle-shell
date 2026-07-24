@@ -1,0 +1,11 @@
+game:
+  main:
+    ammo: Munição
+    label: undefined
+    message:
+      death: Morreste, que triste.
+    round: Ronda {0}
+    stamina: Pressa
+  start:
+    offline: Modo offline
+    play: Começar

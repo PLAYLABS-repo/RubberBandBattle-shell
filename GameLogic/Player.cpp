@@ -6,6 +6,7 @@ constexpr float Player::MAX_STAMINA;
 constexpr float Player::STAMINA_RUN_DRAIN;
 constexpr float Player::STAMINA_JMP_DRAIN;
 constexpr float Player::STAMINA_RECOVER;
+
 Player::Input Player::gatherInput(Window& window)
 {
     PollInput(&window);
@@ -23,7 +24,8 @@ Player::Input Player::gatherInput(Window& window)
 
 void Player::applyAnimationState(bool moving, bool canRun)
 {
-    if (jumping) return;
+
+              if (jumping) return;
 
     if (moving && canRun && lastAnimState != State::RUN)
     {
@@ -40,7 +42,10 @@ void Player::applyAnimationState(bool moving, bool canRun)
         Anim(anim, PLAYER, IDLE);
         lastAnimState = State::IDLE;
     }
+
+
 }
+
 
 void Player::applyPhysics(float dt, float moveX, float moveY, bool moving, bool canRun, bool& outLanded)
 {

@@ -30,53 +30,9 @@ void Sprite::rotateTo(float degrees)
 void Sprite::update(float dt)
 {
     // POSITION
-    float dx = targetPosition.x - position.x;
-    float dy = targetPosition.y - position.y;
-    float dist = sqrtf(dx * dx + dy * dy);
+    float dx =position.x;
+    float dy = position.y;
 
-    if (dist > 0.001f)
-    {
-        float step = moveSpeed * dt;
-
-        if (step >= dist)
-            position = targetPosition;
-        else
-        {
-            position.x += (dx / dist) * step;
-            position.y += (dy / dist) * step;
-        }
-    }
-
-    // SCALE
-    float sx = targetScale.x - scale.x;
-    float sy = targetScale.y - scale.y;
-    float sDist = sqrtf(sx * sx + sy * sy);
-
-    if (sDist > 0.001f)
-    {
-        float step = scaleSpeed * dt;
-
-        if (step >= sDist)
-            scale = targetScale;
-        else
-        {
-            scale.x += (sx / sDist) * step;
-            scale.y += (sy / sDist) * step;
-        }
-    }
-
-    // ROTATION
-    float r = targetRotation - rotation;
-
-    if (fabs(r) > 0.01f)
-    {
-        float step = rotateSpeed * dt;
-
-        if (step >= fabs(r))
-            rotation = targetRotation;
-        else
-            rotation += (r > 0 ? 1 : -1) * step;
-    }
 }
 
 // =========================

@@ -29,6 +29,7 @@ struct Player
     float jumpForce =  800.0f;
     float speed     =  300.0f;
     bool  jumping   = false;
+    int Health = 0;
 
     float facingX = 1.0f;
 

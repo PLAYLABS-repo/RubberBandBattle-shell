@@ -1,0 +1,11 @@
+game:
+  main:
+    ammo: Боеприпасы
+    label: undefined
+    message:
+      death: Ты умер, это очень печально.
+    round: Округлить {0}
+    stamina: Спешка
+  start:
+    offline: Автономный режим
+    play: Начинать

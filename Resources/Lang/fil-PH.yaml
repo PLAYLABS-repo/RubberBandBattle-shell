@@ -1,0 +1,11 @@
+game:
+  main:
+    ammo: Bala
+    label: undefined
+    message:
+      death: Namatay ka, nakakalungkot din.
+    round: Laro {0}
+    stamina: Pagmamadali
+  start:
+    offline: Laro na offline
+    play: Maglaro

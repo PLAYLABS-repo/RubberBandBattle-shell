@@ -1,0 +1,11 @@
+game:
+  main:
+    ammo: 弹药
+    label: undefined
+    message:
+      death: 你去世了，太可惜了。
+    round: 轮数 {0}
+    stamina: 匆忙
+  start:
+    offline: 离线模式
+    play: 开始
