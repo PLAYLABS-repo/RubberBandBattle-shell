@@ -15,21 +15,21 @@ class Window;
 // ============================================================
 struct Player
 {
-    enum class State { IDLE, WALK, RUN, JUMP };
-
-    // ---- Transform ----
+    enum class State { IDLE, WALK, RUN, JUMP, DIE };
+float  playerHealth = 100;
+bool canMove = true;
     float x = 0.0f, y = 0.0f;
     float w = 100.0f, h = 200.0f;
-    float minY = 0.0f, maxY = 1000.0f;
+    float minY = 0.0f, maxY = 625.0f;
     float baseY = 0.0f;
 
     // ---- Physics ----
     float velocityY = 0.0f;
-    float gravity   = -2000.0f;
-    float jumpForce =  800.0f;
+    float gravity   = 2000.0f;
+    float jumpForce =  -800.0f;
     float speed     =  300.0f;
     bool  jumping   = false;
-    int Health = 0;
+
 
     float facingX = 1.0f;
 

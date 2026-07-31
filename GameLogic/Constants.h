@@ -1,2 +1,1 @@
-#pragma once
-#include <cstdint>
+//Temporary constants here

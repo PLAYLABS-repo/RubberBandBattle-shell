@@ -1,0 +1,188 @@
+{
+    "ANIMATION": {
+        "name": "Rubber Band Batlle (1080p) Flash",
+        "StageInstance": {
+            "SYMBOL_Instance": {
+                "SYMBOL_name": "BACKGROUND_ANIM_STATIC1",
+                "Instance_Name": "",
+                "symbolType": "movieclip",
+                "transformationPoint": {
+                    "x": 947.25,
+                    "y": 336.25
+                },
+                "Matrix3D": {
+                    "m00": 1,
+                    "m01": 0,
+                    "m02": 0,
+                    "m03": 0,
+                    "m10": 0,
+                    "m11": 1,
+                    "m12": 0,
+                    "m13": 0,
+                    "m20": 0,
+                    "m21": 0,
+                    "m22": 1,
+                    "m23": 0,
+                    "m30": -493,
+                    "m31": -14.4,
+                    "m32": 0,
+                    "m33": 1
+                },
+                "DecomposedMatrix": {
+                    "Position": {
+                        "x": -493,
+                        "y": -14.4,
+                        "z": 0
+                    },
+                    "Rotation": {
+                        "x": 0,
+                        "y": -0,
+                        "z": 0
+                    },
+                    "Scaling": {
+                        "x": 1,
+                        "y": 1,
+                        "z": 1
+                    }
+                }
+            }
+        },
+        "SYMBOL_name": "BACKGROUND_ANIM_STATIC1",
+        "TIMELINE": {
+            "LAYERS": [
+                {
+                    "Layer_name": "Layer_1",
+                    "Frames": [
+                        {
+                            "index": 0,
+                            "duration": 1,
+                            "elements": [
+                                {
+                                    "ATLAS_SPRITE_instance": {
+                                        "name": "0000",
+                                        "Position": {
+                                            "x": 56,
+                                            "y": 0
+                                        }
+                                    }
+                                },
+                                {
+                                    "SYMBOL_Instance": {
+                                        "SYMBOL_name": "grass top",
+                                        "Instance_Name": "",
+                                        "bitmap": {
+                                            "name": "0001",
+                                            "Position": {
+                                                "x": -358,
+                                                "y": 123
+                                            }
+                                        },
+                                        "symbolType": "movieclip",
+                                        "transformationPoint": {
+                                            "x": 350.1,
+                                            "y": 273.75
+                                        },
+                                        "Matrix3D": {
+                                            "m00": 1.40648,
+                                            "m01": 0,
+                                            "m02": 0,
+                                            "m03": 0,
+                                            "m10": 0,
+                                            "m11": 1.0172,
+                                            "m12": 0,
+                                            "m13": 0,
+                                            "m20": 0,
+                                            "m21": 0,
+                                            "m22": 1,
+                                            "m23": 0,
+                                            "m30": 13.2,
+                                            "m31": 19.4,
+                                            "m32": 0,
+                                            "m33": 1
+                                        },
+                                        "DecomposedMatrix": {
+                                            "Position": {
+                                                "x": 13.2,
+                                                "y": 19.4,
+                                                "z": 0
+                                            },
+                                            "Rotation": {
+                                                "x": 0,
+                                                "y": -0,
+                                                "z": 0
+                                            },
+                                            "Scaling": {
+                                                "x": 1.40648,
+                                                "y": 1.0172,
+                                                "z": 1
+                                            }
+                                        }
+                                    }
+                                },
+                                {
+                                    "SYMBOL_Instance": {
+                                        "SYMBOL_name": "grass top",
+                                        "Instance_Name": "",
+                                        "bitmap": {
+                                            "name": "0001",
+                                            "Position": {
+                                                "x": -358,
+                                                "y": 123
+                                            }
+                                        },
+                                        "symbolType": "movieclip",
+                                        "transformationPoint": {
+                                            "x": 350.1,
+                                            "y": 273.75
+                                        },
+                                        "Matrix3D": {
+                                            "m00": 1.40648,
+                                            "m01": 0,
+                                            "m02": 0,
+                                            "m03": 0,
+                                            "m10": 0,
+                                            "m11": 1.0172,
+                                            "m12": 0,
+                                            "m13": 0,
+                                            "m20": 0,
+                                            "m21": 0,
+                                            "m22": 1,
+                                            "m23": 0,
+                                            "m30": 876.35,
+                                            "m31": 19.4,
+                                            "m32": 0,
+                                            "m33": 1
+                                        },
+                                        "DecomposedMatrix": {
+                                            "Position": {
+                                                "x": 876.35,
+                                                "y": 19.4,
+                                                "z": 0
+                                            },
+                                            "Rotation": {
+                                                "x": 0,
+                                                "y": -0,
+                                                "z": 0
+                                            },
+                                            "Scaling": {
+                                                "x": 1.40648,
+                                                "y": 1.0172,
+                                                "z": 1
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    },
+    "SYMBOL_DICTIONARY": {
+        "Symbols": []
+    },
+    "metadata": {
+        "framerate": 30
+    }
+}

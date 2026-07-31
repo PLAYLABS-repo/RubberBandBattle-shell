@@ -1,4 +1,5 @@
-#include "PlaylabsGL.h"
+
+#include "AbsolutEngine.h"
 #include "Src/UI.h"
 #include <GL/gl.h>
 #include <cstdio>
@@ -15,21 +16,22 @@ int main()
     if (!window.create("RubberBandBattle-Shell", 1280, 720))
         return -1;
 
-    // ---- Font ----
-    UI::_font::load("Resources/Font/Confale.ttf");
+
 
     Camera main_cam;
     main_cam.position = {0.0f, 0.0f};
     main_cam.zoom     = 1.723f;
 
     Timer timer;
+    //FPS debug thing
 #ifdef _DEBUG
     float fpsTimer = 0.0f, currentFPS = 0.0f;
     int   fpsFrames = 0;
 #endif
 
     Player player;
-    // ---- Assets ----
+    // Init assets
+     UI::_font::load("Resources/Font/Confale.ttf");
     Image* playersheet = PL_LoadImage("Resources/Skins/spritemap.png");
     Atlas* playeratlas = LoadAtlas("Resources/Skins/spritemap.json");
     player.anim = CreateAnimator();
@@ -47,11 +49,10 @@ int main()
     Anim(player.anim, PLAYER, IDLE);
     Sound* bgm =  CreateSound();
     bgm->load("bgm.wav");
-    Sprite* background         = CreateSprite();
-    background->image          = ground;
-    background->position       = (0.0f,0.0f);
-    background->skewX          = 0.0f;
-
+    Sprite* bg         = CreateSprite();
+    bg->image        = ground;
+    bg->position       = {0.0f,0.0f};
+    bg->skewX          = 0.0f;
 
     const AABB wallBox(100.0f, 100.0f, 100.0f, 100.0f);
 
@@ -61,6 +62,7 @@ int main()
     bgm->play(true);
     while (window.process())
     {
+
         float dt = timer.delta();
         if (dt > 0.05f) dt = 0.05f;
         Sleep(10);
@@ -85,12 +87,14 @@ int main()
         // ======================================================
         // RENDER — world
         // ======================================================
-        PL_Clear(0.12f, 0.12f, 0.18f, 1.0f);
+        PL_Clear(0.18f, 0.18f, 0.27f, 1.0f);
         applyCamera2D(main_cam, sw, sh);
 
 
-
-        background->update(dt); background->draw(main_cam);
+ if (KeyPressed('T')){
+         player.playerHealth = player.playerHealth - 5.0f;
+        }
+        bg->update(dt); bg->draw(main_cam);
 
         player.sprite->update(dt); player.sprite->draw(main_cam);
         TickAnimator(player.anim, dt, playersheet, playeratlas, &main_cam);
@@ -111,12 +115,13 @@ float screenY = (player.y - main_cam.position.y + -300) * main_cam.zoom + sh * 0
 #endif
         // Stamina bar
         UI::Label("Player",
-          screenX - UI::_font::textWidth("Player", 2.0f) * 0.5f,
+          screenX - UI::_font::textWidth("Player", 1.0f) * 0.5f,
           screenY - 30.0f,
           2.0f,
           1.0f, 1.0f, 0.0f);
         {
             float stFill = std::max(0.0f, std::min(player.stamina / Player::MAX_STAMINA, 1.0f));
+
             float sr = 1.0f;
             float sg = player.staminaExhausted ? 0.15f : (0.3f + stFill * 0.7f);
             float sb = player.staminaExhausted ? 0.05f : (stFill * 0.2f);
@@ -128,15 +133,22 @@ float screenY = (player.y - main_cam.position.y + -300) * main_cam.zoom + sh * 0
                       sr, player.staminaExhausted ? 0.2f : 0.85f, 0.1f, 1.0f);
             UI::ProgressBar(stFill, bx, by + 16.0f, barW, barH,
                             sr, sg, sb, 0.15f, 0.15f, 0.15f);
+                             UI::Label("Stamina", bx, by, 2.0f,sr, player.staminaExhausted ? 0.2f : 0.85f, 0.1f, 1.0f);
+UI::Label(std::to_string((float)player.playerHealth), bx, by, 2.0f,
+          sr, player.playerHealth <= 20.0f ? 0.2f : 0.85f, 0.1f, 1.0f);
+          UI::Label(std::to_string((int)player.playerHealth), bx, by - 40, 2.0f,
+          sr, player.playerHealth <= 20.0f ? 0.2f : 0.85f, 0.1f, 1.0f);
+
         }
 
+ UI::Label("Use WASD or arrow keys to move player. Shift to sprint. T to diminish health",0.0f,20.0f ,sw / 500,0.0f, 0.0f, 0.0f);
         UI::EndFrame();
         PL_Present(&window);
     }
 
     DestroySound(bgm);
     DestroyAnimator(player.anim); DestroySprite(player.sprite);
-    DestroySprite(background);
+    DestroySprite(bg);
     FreeAtlas(playeratlas);       PL_FreeImage(playersheet);
     return 0;
 }

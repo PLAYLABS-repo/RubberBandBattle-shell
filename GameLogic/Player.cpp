@@ -1,5 +1,5 @@
 #include "Player.h"
-#include "PlaylabsGL.h"
+#include "AbsolutEngine.h"
 #include <windows.h>
 #include <algorithm>
 constexpr float Player::MAX_STAMINA;
@@ -7,7 +7,9 @@ constexpr float Player::STAMINA_RUN_DRAIN;
 constexpr float Player::STAMINA_JMP_DRAIN;
 constexpr float Player::STAMINA_RECOVER;
 
-Player::Input Player::gatherInput(Window& window)
+
+
+    Player::Input Player::gatherInput(Window& window)
 {
     PollInput(&window);
 
@@ -72,6 +74,8 @@ void Player::applyPhysics(float dt, float moveX, float moveY, bool moving, bool 
     }
 }
 
+
+
 void Player::resolveWallCollision(const AABB& wallBox, float moveX, float currentSpeed, float dt,
                                    bool moving, bool canRun, bool& outLanded)
 {
@@ -84,12 +88,15 @@ void Player::resolveWallCollision(const AABB& wallBox, float moveX, float curren
     switch (side)
     {
         case CollisionSide::Top:
-            y         = wallBox.y - phbH - h;
-            baseY     = y;
-            velocityY = 0.0f;
-            jumping   = false;
-            applyAnimationState(moving, canRun);
-            outLanded = true;
+            if (velocityY >= 0.0f)   // only land if falling/at rest, not mid-jump ascent
+            {
+                y         = wallBox.y - phbH - h;
+                baseY     = y;
+                velocityY = 0.0f;
+                jumping   = false;
+                applyAnimationState(moving, canRun);
+                outLanded = true;
+            }
             break;
 
         case CollisionSide::Bottom:
@@ -111,8 +118,28 @@ Player::FrameEvents Player::update(float dt, const Input& input, const AABB& wal
 {
     FrameEvents events;
 
-    // ---- Movement input ----
-    bool  moving = false;
+       if (playerHealth  <= 0  )
+    {
+        canMove = false;
+       if (lastAnimState != State::DIE)
+    {
+        Anim(anim, PLAYER, DIE);
+        lastAnimState = State::DIE;
+
+    }
+
+    }
+    else {
+          canMove = true;
+    }
+
+
+
+
+
+
+if (canMove) {
+     bool  moving = false;
     float moveX = 0.0f, moveY = 0.0f;
 
     if (input.moveRight) { moveX =  1.0f; moving = true; facingX = -1.0f; }
@@ -194,6 +221,8 @@ else
     events.landed = events.landed || landed;
     return events;
 }
+}
+
 
 void Player::resetToSpawn(float spawnX, float spawnY)
 {
@@ -206,6 +235,8 @@ void Player::resetToSpawn(float spawnX, float spawnY)
 
     stamina          = MAX_STAMINA;
     staminaExhausted = false;
+     playerHealth = 100.0f;   // add this
+    canMove      = true;
 
     if (sprite)
     {
@@ -216,3 +247,6 @@ void Player::resetToSpawn(float spawnX, float spawnY)
     Anim(anim, "PLAYER", "IDLE");
     lastAnimState = State::IDLE;
 }
+
+
+

@@ -31,7 +31,7 @@
 #include <cstdio>
 #include <cstdarg>
 
-#include "PlaylabsGL.h"   // EventBus, EventData, Image, MousePos, KeyDown …
+#include "AbsolutEngine.h"   // EventBus, EventData, Image, MousePos, KeyDown …
 #include "include/stb_truetype.h"
 
 // ─────────────────────────────────────────────────────────────
