@@ -1,7 +1,6 @@
 #pragma once
 
-#include "DrawHelpers.h" // AABB, CollisionSide
-
+#include "DrawHelpers.h"
 
 class Sprite;
 class TimelineAnimator;
@@ -20,7 +19,8 @@ float  playerHealth = 100;
 bool canMove = true;
     float x = 0.0f, y = 0.0f;
     float w = 100.0f, h = 200.0f;
-    float minY = 0.0f, maxY = 625.0f;
+    float minY = 0.0f, maxY = 500.0f;
+    float minX = 100.0f, maxX = 2500.0f;
     float baseY = 0.0f;
 
     // ---- Physics ----
@@ -43,7 +43,7 @@ bool canMove = true;
 
     // ---- Animation / visuals ----
     State     lastAnimState = State::IDLE;
-    TimelineAnimator* anim = nullptr;
+    Animator* anim = nullptr;
     Sprite*   sprite = nullptr;
 
     // ---- Per-frame input snapshot; main() fills this in from KeyDown/KeyPressed ----

@@ -21,12 +21,12 @@ extern "C"
     void    Playlabs_DestroySound(Sound* snd);
     Sprite* Playlabs_CreateSprite();
     void    Playlabs_DestroySprite(Sprite* spr);
-    TimelineAnimator* Playlabs_CreateAnimator();
-    void              Playlabs_DestroyAnimator(TimelineAnimator* anim);
-    void Playlabs_AnimPlay(TimelineAnimator* anim, const char* entity, const char* clip);
-    void Playlabs_SetAnimatorParent(TimelineAnimator* anim, float x, float y, float rotationRadians, float scaleX, float scaleY);
-    void Playlabs_ClearAnimatorParent(TimelineAnimator* anim);
-    void Playlabs_TickAnimator(TimelineAnimator* anim, float dt, Image* img, Atlas* atlas, Camera* cam);
+    Animator* Playlabs_CreateAnimator();
+    void      Playlabs_DestroyAnimator(Animator* anim);
+    void Playlabs_AnimPlay(Animator* anim, const char* entity, const char* clip);
+    void Playlabs_SetAnimatorParent(Animator* anim, float x, float y, float rotationRadians, float scaleX, float scaleY);
+    void Playlabs_ClearAnimatorParent(Animator* anim);
+    void Playlabs_TickAnimator(Animator* anim, float dt, Image* img, Atlas* atlas, Camera* cam);
     void Playlabs_ApplyCamera(Camera* cam, int screenWidth, int screenHeight);
     void Playlabs_Present(Window* win);
     void Playlabs_Clear(float r, float g, float b, float a);
@@ -52,11 +52,11 @@ inline Sound*  CreateSound()                                  { return Playlabs_
 inline void    DestroySound(Sound* s)                         { Playlabs_DestroySound(s); }
 inline Sprite* CreateSprite()                                 { return Playlabs_CreateSprite(); }
 inline void    DestroySprite(Sprite* s)                       { Playlabs_DestroySprite(s); }
-inline TimelineAnimator* CreateAnimator()                     { return Playlabs_CreateAnimator(); }
-inline void    DestroyAnimator(TimelineAnimator* a)           { Playlabs_DestroyAnimator(a); }
-inline void    SetAnimatorParent(TimelineAnimator* a,
+inline Animator* CreateAnimator()                             { return Playlabs_CreateAnimator(); }
+inline void    DestroyAnimator(Animator* a)                   { Playlabs_DestroyAnimator(a); }
+inline void    SetAnimatorParent(Animator* a,
                    float x, float y, float r, float sx, float sy) { Playlabs_SetAnimatorParent(a,x,y,r,sx,sy); }
-inline void    TickAnimator(TimelineAnimator* a, float dt,
+inline void    TickAnimator(Animator* a, float dt,
                    Image* img, Atlas* atl, Camera* cam)       { Playlabs_TickAnimator(a,dt,img,atl,cam); }
 #define Anim(anim, entity, clip) Playlabs_Anim(anim, entity, clip)
 inline void    PollInput(Window* w)                           { Playlabs_PollInput(w); }

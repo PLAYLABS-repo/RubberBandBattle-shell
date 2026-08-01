@@ -2,6 +2,7 @@
 #include "AbsolutEngine.h"
 #include <windows.h>
 #include <algorithm>
+#include "Constants.h"
 constexpr float Player::MAX_STAMINA;
 constexpr float Player::STAMINA_RUN_DRAIN;
 constexpr float Player::STAMINA_JMP_DRAIN;
@@ -57,6 +58,7 @@ void Player::applyPhysics(float dt, float moveX, float moveY, bool moving, bool 
     {
         y += moveY * (canRun ? speed * 1.7f : speed) * dt;
         y  = std::max(minY, std::min(y, maxY - h));
+        x  = std::max(minX, std::min(x, maxX - w));
         baseY = y;
         return;
     }

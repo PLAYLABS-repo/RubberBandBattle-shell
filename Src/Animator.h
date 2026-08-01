@@ -11,77 +11,77 @@ class Camera;
 // =========================
 // STRUCTS
 // =========================
-struct TA_Element
+struct AnimElement
 {
-    std::string spriteName;   // ATLAS_SPRITE_instance or bitmap name
-    std::string symbolName;   // SYMBOL_Instance name
+    std::string SpriteName;   // ATLAS_SPRITE_instance or bitmap name
+    std::string SymbolName;   // SYMBOL_Instance name
 
-    Vec2  position  = {0, 0};
-    Vec2  bitmapOff = {0, 0}; // bitmap's own local offset inside symbol
-    Vec2  scale     = {1, 1};
-    float rotation  = 0.0f;   // radians (from DecomposedMatrix.Rotation.z)
-    Vec2  pivot     = {0, 0}; // transformationPoint (raw pixels)
+    Vec2  Position  = {0, 0};
+    Vec2  BitmapOff = {0, 0}; // bitmap's own local offset inside symbol
+    Vec2  Scale     = {1, 1};
+    float Rotation  = 0.0f;   // radians (from DecomposedMatrix.Rotation.z)
+    Vec2  Pivot     = {0, 0}; // transformationPoint (raw pixels)
 
 
     // Graphic symbol playback
-    bool  isGraphic  = false;
-    int   firstFrame = 0;
-    bool  looping    = true;
+    bool  IsGraphic  = false;
+    int   FirstFrame = 0;
+    bool  Looping    = true;
 };
 
-struct TA_Frame
+struct AnimFrame
 {
-    int index    = 0;
-    int duration = 1;
-    std::vector<TA_Element> elements;
+    int Index    = 0;
+    int Duration = 1;
+    std::vector<AnimElement> Elements;
 };
 
-struct TA_Layer
+struct AnimLayer
 {
-    std::vector<TA_Frame> frames;
+    std::vector<AnimFrame> Frames;
 };
 
-struct TA_Timeline
+struct AnimTimeline
 {
-    std::vector<TA_Layer> layers;
-    int totalFrames = 0;
+    std::vector<AnimLayer> Layers;
+    int TotalFrames = 0;
 };
 
 // =========================
 // PARENT TRANSFORM
 // Describes a world-space anchor that this animator is parented to.
-// Set parentEnabled = true and fill position/rotation/scale to attach.
+// Set Enabled = true and fill Position/Rotation/Scale to attach.
 // =========================
-struct TA_ParentTransform
+struct AnimParentTransform
 {
-    bool  enabled  = false;
-    Vec2  position = {0, 0};
-    float rotation = 0.0f;   // radians
-    Vec2  scale    = {1, 1};
+    bool  Enabled  = false;
+    Vec2  Position = {0, 0};
+    float Rotation = 0.0f;   // radians
+    Vec2  Scale    = {1, 1};
 };
 
 // =========================
 // MAIN CLASS
 // =========================
-class TimelineAnimator
+class Animator
 {
 public:
     // -------------------------------------------------------
-    // Parent transform — set before draw() to attach to a world anchor.
-    //   animator.parent.enabled  = true;
-    //   animator.parent.position = {playerX, playerY};
-    //   animator.parent.rotation = playerRotRad;
-    //   animator.parent.scale    = {1, 1};
+    // Parent transform — set before Draw() to attach to a world anchor.
+    //   animator.Parent.Enabled  = true;
+    //   animator.Parent.Position = {playerX, playerY};
+    //   animator.Parent.Rotation = playerRotRad;
+    //   animator.Parent.Scale    = {1, 1};
     // -------------------------------------------------------
-    TA_ParentTransform parent;
+    AnimParentTransform Parent;
 
-    bool load(const char* path);
+    bool Load(const char* path);
 
-    // Play a named symbol e.g. play("PLAYER", "RUN") -> plays PLAYER_ANIM_RUN
-    void play(const std::string& entity, const std::string& animType);
+    // Play a named symbol e.g. Play("PLAYER", "RUN") -> plays PLAYER_ANIM_RUN
+    void Play(const std::string& entity, const std::string& animType);
 
-    void update(float dt);
-    void draw(Image* img, Atlas* atlas, Camera& cam);
+    void Update(float dt);
+    void Draw(Image* img, Atlas* atlas, Camera& cam);
 
     // -------------------------------------------------------
     // Part swapping — replace a sprite name inside a specific animation.
@@ -95,7 +95,7 @@ public:
     //               sub-symbol (body part, limb, accessory, etc.).
     //               e.g. ChangeParts("sword_a", "sword_b", "PLAYER_ANIM_RUN")
     //
-    // Both functions mutate the stored TA_Timeline in `symbols`, so the swap
+    // Both functions mutate the stored AnimTimeline in `Symbols`, so the swap
     // persists until you call ChangePart(s) again or reload the file.
     // To revert, call the same function with the arguments swapped.
     // -------------------------------------------------------
@@ -107,27 +107,27 @@ public:
                      const std::string& newSprite,
                      const std::string& animKey);
 
-    int  currentFrame = 0;
-    int  totalFrames  = 0;
+    int  CurrentFrame = 0;
+    int  TotalFrames  = 0;
 
 private:
-    std::map<std::string, TA_Timeline> symbols;
-    TA_Timeline* activeTimeline = nullptr;
+    std::map<std::string, AnimTimeline> Symbols;
+    AnimTimeline* ActiveAnim = nullptr;
 
-    float frameTimer = 0.0f;
-    float fps        = 30.0f;
+    float FrameTimer = 0.0f;
+    float Fps        = 30.0f;
 
-    void drawTimeline(
-        TA_Timeline& timeline,
-        Image*       img,
-        Atlas*       atlas,
-        Vec2         parentPos,
-        float        parentRot,   // radians
-        Vec2         parentScale,
-        int          frame
+    void DrawAnim(
+        AnimTimeline& timeline,
+        Image*        img,
+        Atlas*        atlas,
+        Vec2          parentPos,
+        float         parentRot,   // radians
+        Vec2          parentScale,
+        int           frame
     );
 
-    void drawSprite(
+    void DrawSprite(
         const std::string& name,
         Image* img, Atlas* atlas,
         Vec2 pos, float rotRad, Vec2 scale, Vec2 pivot,
@@ -135,12 +135,12 @@ private:
     );
 
     // Internal helpers for ChangePart / ChangeParts
-    void swapSpriteInTimeline(TA_Timeline&       timeline,
-                              const std::string& oldSprite,
-                              const std::string& newSprite,
-                              bool               recursive);
+    void SwapSpriteInAnim(AnimTimeline&       timeline,
+                           const std::string& oldSprite,
+                           const std::string& newSprite,
+                           bool               recursive);
 
-    void swapSpriteInElement (TA_Element&        el,
+    void SwapSpriteInElement(AnimElement&        el,
                               const std::string& oldSprite,
                               const std::string& newSprite,
                               bool               recursive);

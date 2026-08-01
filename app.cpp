@@ -35,7 +35,7 @@ int main()
     Image* playersheet = PL_LoadImage("Resources/Skins/spritemap.png");
     Atlas* playeratlas = LoadAtlas("Resources/Skins/spritemap.json");
     player.anim = CreateAnimator();
-    player.anim->load("Resources/Skins/Animation.json");
+    player.anim->Load("Resources/Skins/Animation.json");
     Image* ground =PL_LoadImage("Resources/Texture/BGDebug.png");
 
     player.sprite                 = CreateSprite();
@@ -46,11 +46,12 @@ int main()
     player.sprite->targetPosition = {player.x, player.y};
     player.sprite->scale          = {1.0f, 1.0f};
 
+
     Anim(player.anim, PLAYER, IDLE);
     Sound* bgm =  CreateSound();
     bgm->load("bgm.wav");
     Sprite* bg         = CreateSprite();
-    bg->image        = ground;
+    bg->image          = ground;
     bg->position       = {0.0f,0.0f};
     bg->skewX          = 0.0f;
 
@@ -84,9 +85,7 @@ int main()
         main_cam.position.x += (player.x - (float)sw * 0.5f + 340.0f - main_cam.position.x) * 5.0f * dt;
         main_cam.position.y += (player.y - (float)sh * 0.5f + 280.0f - main_cam.position.y) * 5.0f * dt;
 
-        // ======================================================
-        // RENDER — world
-        // ======================================================
+
         PL_Clear(0.18f, 0.18f, 0.27f, 1.0f);
         applyCamera2D(main_cam, sw, sh);
 

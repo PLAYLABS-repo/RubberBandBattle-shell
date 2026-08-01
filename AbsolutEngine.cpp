@@ -1,4 +1,4 @@
-// PlaylabsGL.cpp � compile alongside your other .cpp sources
+// PlaylabsGL.cpp — compile alongside your other .cpp sources
 #include "AbsolutEngine.h"
 #include <GL/gl.h>
 #include <windows.h>
@@ -49,58 +49,58 @@ Sprite* Playlabs_CreateSprite()           { return new Sprite(); }
 void    Playlabs_DestroySprite(Sprite* s) { delete s; }
 
 // =============================================================
-// TimelineAnimator
+// Animator
 // =============================================================
 
-TimelineAnimator* Playlabs_CreateAnimator()                    { return new TimelineAnimator(); }
-void              Playlabs_DestroyAnimator(TimelineAnimator* a) { delete a; }
+Animator* Playlabs_CreateAnimator()             { return new Animator(); }
+void      Playlabs_DestroyAnimator(Animator* a) { delete a; }
 
 // Called by the Playlabs_Anim(anim, ENTITY, CLIP) macro.
 // entity + clip are already stringified by the macro's # operator.
-// Internally calls anim->play(entity, clip) which builds the key
+// Internally calls anim->Play(entity, clip) which builds the key
 // entity + "_ANIM_" + clip and looks it up in the symbol table.
 void Playlabs_AnimPlay(
-    TimelineAnimator* anim,
+    Animator* anim,
     const char* entity,
     const char* clip
 )
 {
     if (!anim || !entity || !clip) return;
-    anim->play(entity, clip);
+    anim->Play(entity, clip);
 }
 
 void Playlabs_SetAnimatorParent(
-    TimelineAnimator* anim,
+    Animator* anim,
     float x, float y,
     float rotationRadians,
     float scaleX, float scaleY
 )
 {
     if (!anim) return;
-    anim->parent.enabled  = true;
-    anim->parent.position = {x, y};
-    anim->parent.rotation = rotationRadians;
-    anim->parent.scale    = {scaleX, scaleY};
+    anim->Parent.Enabled  = true;
+    anim->Parent.Position = {x, y};
+    anim->Parent.Rotation = rotationRadians;
+    anim->Parent.Scale    = {scaleX, scaleY};
 }
 
-void Playlabs_ClearAnimatorParent(TimelineAnimator* anim)
+void Playlabs_ClearAnimatorParent(Animator* anim)
 {
     if (!anim) return;
-    anim->parent.enabled  = false;
-    anim->parent.position = {0, 0};
-    anim->parent.rotation = 0.0f;
-    anim->parent.scale    = {1, 1};
+    anim->Parent.Enabled  = false;
+    anim->Parent.Position = {0, 0};
+    anim->Parent.Rotation = 0.0f;
+    anim->Parent.Scale    = {1, 1};
 }
 
 void Playlabs_TickAnimator(
-    TimelineAnimator* anim,
+    Animator* anim,
     float dt,
     Image* img, Atlas* atlas, Camera* cam
 )
 {
     if (!anim || !img || !atlas || !cam) return;
-    anim->update(dt);
-    anim->draw(img, atlas, *cam);
+    anim->Update(dt);
+    anim->Draw(img, atlas, *cam);
 }
 
 // =============================================================

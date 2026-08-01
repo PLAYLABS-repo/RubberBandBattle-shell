@@ -13,19 +13,19 @@ using json = nlohmann::json;
 // =========================
 // HELPERS
 // =========================
-static float safeFloat(const json& j, const char* key, float fallback = 0.0f)
+static float SafeFloat(const json& j, const char* key, float fallback = 0.0f)
 {
     if (!j.contains(key) || j[key].is_null()) return fallback;
     return j[key].get<float>();
 }
 
-static int safeInt(const json& j, const char* key, int fallback = 0)
+static int SafeInt(const json& j, const char* key, int fallback = 0)
 {
     if (!j.contains(key) || j[key].is_null()) return fallback;
     return j[key].get<int>();
 }
 
-static std::string safeString(const json& j, const char* key, const std::string& fallback = "")
+static std::string SafeString(const json& j, const char* key, const std::string& fallback = "")
 {
     if (!j.contains(key) || j[key].is_null()) return fallback;
     return j[key].get<std::string>();
@@ -38,24 +38,24 @@ static std::string safeString(const json& j, const char* key, const std::string&
 //   2. SYMBOL_Instance (with bitmap field) — leaf wrapped in symbol
 //   3. SYMBOL_Instance (no bitmap) — nested movieclip/graphic, recurse
 // =========================
-static TA_Element parseElement(const json& e)
+static AnimElement ParseElement(const json& e)
 {
-    TA_Element el;
+    AnimElement el;
 
     if (e.contains("ATLAS_SPRITE_instance") && !e["ATLAS_SPRITE_instance"].is_null())
     {
         auto& sp = e["ATLAS_SPRITE_instance"];
-        el.spriteName = safeString(sp, "name");
+        el.SpriteName = SafeString(sp, "name");
 
         if (sp.contains("Position") && !sp["Position"].is_null())
         {
-            el.position.x = safeFloat(sp["Position"], "x");
-            el.position.y = safeFloat(sp["Position"], "y");
+            el.Position.x = SafeFloat(sp["Position"], "x");
+            el.Position.y = SafeFloat(sp["Position"], "y");
         }
         if (sp.contains("transformationPoint") && !sp["transformationPoint"].is_null())
         {
-            el.pivot.x = safeFloat(sp["transformationPoint"], "x");
-            el.pivot.y = safeFloat(sp["transformationPoint"], "y");
+            el.Pivot.x = SafeFloat(sp["transformationPoint"], "x");
+            el.Pivot.y = SafeFloat(sp["transformationPoint"], "y");
         }
     }
 
@@ -68,44 +68,44 @@ static TA_Element parseElement(const json& e)
             auto& dm = inst["DecomposedMatrix"];
             if (dm.contains("Position") && !dm["Position"].is_null())
             {
-                el.position.x = safeFloat(dm["Position"], "x");
-                el.position.y = safeFloat(dm["Position"], "y");
+                el.Position.x = SafeFloat(dm["Position"], "x");
+                el.Position.y = SafeFloat(dm["Position"], "y");
             }
             if (dm.contains("Scaling") && !dm["Scaling"].is_null())
             {
-                el.scale.x = safeFloat(dm["Scaling"], "x", 1.0f);
-                el.scale.y = safeFloat(dm["Scaling"], "y", 1.0f);
+                el.Scale.x = SafeFloat(dm["Scaling"], "x", 1.0f);
+                el.Scale.y = SafeFloat(dm["Scaling"], "y", 1.0f);
             }
             if (dm.contains("Rotation") && !dm["Rotation"].is_null())
             {
-                el.rotation = safeFloat(dm["Rotation"], "z");
+                el.Rotation = SafeFloat(dm["Rotation"], "z");
             }
         }
 
         if (inst.contains("transformationPoint") && !inst["transformationPoint"].is_null())
         {
-            el.pivot.x = safeFloat(inst["transformationPoint"], "x");
-            el.pivot.y = safeFloat(inst["transformationPoint"], "y");
+            el.Pivot.x = SafeFloat(inst["transformationPoint"], "x");
+            el.Pivot.y = SafeFloat(inst["transformationPoint"], "y");
         }
 
         if (inst.contains("bitmap") && !inst["bitmap"].is_null())
         {
             auto& bm = inst["bitmap"];
-            el.spriteName  = safeString(bm, "name");
-            el.bitmapOff.x = safeFloat(bm.contains("Position") ? bm["Position"] : json{}, "x");
-            el.bitmapOff.y = safeFloat(bm.contains("Position") ? bm["Position"] : json{}, "y");
+            el.SpriteName  = SafeString(bm, "name");
+            el.BitmapOff.x = SafeFloat(bm.contains("Position") ? bm["Position"] : json{}, "x");
+            el.BitmapOff.y = SafeFloat(bm.contains("Position") ? bm["Position"] : json{}, "y");
         }
         else
         {
-            el.symbolName = safeString(inst, "SYMBOL_name");
+            el.SymbolName = SafeString(inst, "SYMBOL_name");
 
-            std::string sType = safeString(inst, "symbolType");
+            std::string sType = SafeString(inst, "symbolType");
             if (sType == "graphic")
             {
-                el.isGraphic  = true;
-                el.firstFrame = safeInt(inst, "firstFrame", 0);
-                std::string loop = safeString(inst, "loop", "loop");
-                el.looping    = (loop == "loop");
+                el.IsGraphic  = true;
+                el.FirstFrame = SafeInt(inst, "firstFrame", 0);
+                std::string loop = SafeString(inst, "loop", "loop");
+                el.Looping    = (loop == "loop");
             }
         }
     }
@@ -116,32 +116,32 @@ static TA_Element parseElement(const json& e)
 // =========================
 // PARSE LAYERS
 // =========================
-static int parseLayers(const json& timelineNode, TA_Timeline& out)
+static int ParseLayers(const json& animNode, AnimTimeline& out)
 {
     int maxFrame = 0;
-    if (!timelineNode.contains("LAYERS")) return 1;
+    if (!animNode.contains("LAYERS")) return 1;
 
-    for (auto& layer : timelineNode["LAYERS"])
+    for (auto& layer : animNode["LAYERS"])
     {
-        TA_Layer l;
+        AnimLayer l;
         if (!layer.contains("Frames")) continue;
 
         for (auto& frame : layer["Frames"])
         {
-            TA_Frame f;
-            f.index    = safeInt(frame, "index");
-            f.duration = safeInt(frame, "duration", 1);
+            AnimFrame f;
+            f.Index    = SafeInt(frame, "index");
+            f.Duration = SafeInt(frame, "duration", 1);
 
-            int end = f.index + f.duration;
+            int end = f.Index + f.Duration;
             if (end > maxFrame) maxFrame = end;
 
             if (frame.contains("elements") && frame["elements"].is_array())
                 for (auto& e : frame["elements"])
-                    f.elements.push_back(parseElement(e));
+                    f.Elements.push_back(ParseElement(e));
 
-            l.frames.push_back(f);
+            l.Frames.push_back(f);
         }
-        out.layers.push_back(l);
+        out.Layers.push_back(l);
     }
 
     return maxFrame > 0 ? maxFrame : 1;
@@ -150,7 +150,7 @@ static int parseLayers(const json& timelineNode, TA_Timeline& out)
 // =========================
 // LOAD
 // =========================
-bool TimelineAnimator::load(const char* path)
+bool Animator::Load(const char* path)
 {
     std::ifstream file(path);
     if (!file.is_open()) return false;
@@ -164,24 +164,24 @@ bool TimelineAnimator::load(const char* path)
 
     for (auto& sym : j["SYMBOL_DICTIONARY"]["Symbols"])
     {
-        std::string symName = safeString(sym, "SYMBOL_name");
+        std::string symName = SafeString(sym, "SYMBOL_name");
         if (symName.empty()) continue;
 
-        TA_Timeline t;
+        AnimTimeline t;
         if (sym.contains("TIMELINE") && !sym["TIMELINE"].is_null())
-            t.totalFrames = parseLayers(sym["TIMELINE"], t);
+            t.TotalFrames = ParseLayers(sym["TIMELINE"], t);
         else
-            t.totalFrames = 1;
+            t.TotalFrames = 1;
 
-        symbols[symName] = std::move(t);
+        Symbols[symName] = std::move(t);
     }
 
-    for (auto it = symbols.begin(); it != symbols.end(); ++it)
+    for (auto it = Symbols.begin(); it != Symbols.end(); ++it)
     {
         if (it->first.find("_ANIM_") != std::string::npos)
         {
-            activeTimeline = &it->second;
-            totalFrames    = activeTimeline->totalFrames;
+            ActiveAnim  = &it->second;
+            TotalFrames = ActiveAnim->TotalFrames;
             break;
         }
     }
@@ -192,42 +192,93 @@ bool TimelineAnimator::load(const char* path)
 // =========================
 // PLAY
 // =========================
-void TimelineAnimator::play(const std::string& entity, const std::string& animType)
+void Animator::Play(const std::string& entity, const std::string& animType)
 {
     std::string key = entity + "_ANIM_" + animType;
 
-    auto it = symbols.find(key);
-    if (it == symbols.end()) return;
+    auto it = Symbols.find(key);
+    if (it == Symbols.end()) return;
 
-    activeTimeline = &it->second;
-    totalFrames    = activeTimeline->totalFrames;
-    currentFrame   = 0;
-    frameTimer     = 0.0f;
+    ActiveAnim   = &it->second;
+    TotalFrames  = ActiveAnim->TotalFrames;
+    CurrentFrame = 0;
+    FrameTimer   = 0.0f;
+}
+
+// =========================
+// CHANGE PART
+// See Animator.h for the ChangePart vs ChangeParts distinction.
+// =========================
+void Animator::ChangePart(const std::string& oldSprite,
+                           const std::string& newSprite,
+                           const std::string& animKey)
+{
+    auto it = Symbols.find(animKey);
+    if (it == Symbols.end()) return;
+
+    SwapSpriteInAnim(it->second, oldSprite, newSprite, /*recursive=*/false);
+}
+
+void Animator::ChangeParts(const std::string& oldSprite,
+                            const std::string& newSprite,
+                            const std::string& animKey)
+{
+    auto it = Symbols.find(animKey);
+    if (it == Symbols.end()) return;
+
+    SwapSpriteInAnim(it->second, oldSprite, newSprite, /*recursive=*/true);
+}
+
+void Animator::SwapSpriteInAnim(AnimTimeline&       timeline,
+                                 const std::string& oldSprite,
+                                 const std::string& newSprite,
+                                 bool                recursive)
+{
+    for (auto& layer : timeline.Layers)
+        for (auto& frame : layer.Frames)
+            for (auto& el : frame.Elements)
+                SwapSpriteInElement(el, oldSprite, newSprite, recursive);
+}
+
+void Animator::SwapSpriteInElement(AnimElement&        el,
+                                    const std::string& oldSprite,
+                                    const std::string& newSprite,
+                                    bool                recursive)
+{
+    if (el.SpriteName == oldSprite)
+        el.SpriteName = newSprite;
+
+    if (recursive && !el.SymbolName.empty())
+    {
+        auto it = Symbols.find(el.SymbolName);
+        if (it != Symbols.end())
+            SwapSpriteInAnim(it->second, oldSprite, newSprite, recursive);
+    }
 }
 
 // =========================
 // UPDATE
 // =========================
-void TimelineAnimator::update(float dt)
+void Animator::Update(float dt)
 {
-    if (!activeTimeline) return;
+    if (!ActiveAnim) return;
 
-    frameTimer += dt;
-    if (frameTimer >= 1.0f / fps)
+    FrameTimer += dt;
+    if (FrameTimer >= 1.0f / Fps)
     {
-        frameTimer = 0.0f;
-        currentFrame++;
-        if (currentFrame >= totalFrames)
-            currentFrame = 0;
+        FrameTimer = 0.0f;
+        CurrentFrame++;
+        if (CurrentFrame >= TotalFrames)
+            CurrentFrame = 0;
     }
 }
 
 // =========================
 // DRAW ENTRY — applies parent transform before descending
 // =========================
-void TimelineAnimator::draw(Image* img, Atlas* atlas, Camera& cam)
+void Animator::Draw(Image* img, Atlas* atlas, Camera& cam)
 {
-    if (!activeTimeline) return;
+    if (!ActiveAnim) return;
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -235,11 +286,11 @@ void TimelineAnimator::draw(Image* img, Atlas* atlas, Camera& cam)
 
     // If a parent transform is set, use it as the root origin.
     // Otherwise start at world origin (0,0) with identity rotation/scale.
-    Vec2  rootPos   = parent.enabled ? parent.position : Vec2{0, 0};
-    float rootRot   = parent.enabled ? parent.rotation : 0.0f;
-    Vec2  rootScale = parent.enabled ? parent.scale    : Vec2{1, 1};
+    Vec2  rootPos   = Parent.Enabled ? Parent.Position : Vec2{0, 0};
+    float rootRot   = Parent.Enabled ? Parent.Rotation : 0.0f;
+    Vec2  rootScale = Parent.Enabled ? Parent.Scale    : Vec2{1, 1};
 
-    drawTimeline(*activeTimeline, img, atlas, rootPos, rootRot, rootScale, currentFrame);
+    DrawAnim(*ActiveAnim, img, atlas, rootPos, rootRot, rootScale, CurrentFrame);
 
     glDisable(GL_BLEND);
 }
@@ -247,7 +298,7 @@ void TimelineAnimator::draw(Image* img, Atlas* atlas, Camera& cam)
 // =========================
 // DRAW SPRITE HELPER
 // =========================
-void TimelineAnimator::drawSprite(
+void Animator::DrawSprite(
     const std::string& name,
     Image* img, Atlas* atlas,
     Vec2 pos, float rotRad, Vec2 scale, Vec2 pivot,
@@ -299,56 +350,56 @@ void TimelineAnimator::drawSprite(
 // =========================
 // CORE RENDER
 // =========================
-void TimelineAnimator::drawTimeline(
-    TA_Timeline& timeline,
-    Image*       img,
-    Atlas*       atlas,
-    Vec2         parentPos,
-    float        parentRot,
-    Vec2         parentScale,
-    int          frame
+void Animator::DrawAnim(
+    AnimTimeline& timeline,
+    Image*        img,
+    Atlas*        atlas,
+    Vec2          parentPos,
+    float         parentRot,
+    Vec2          parentScale,
+    int           frame
 )
 {
-    for (int li = (int)timeline.layers.size() - 1; li >= 0; li--)
+    for (int li = (int)timeline.Layers.size() - 1; li >= 0; li--)
     {
-        auto& layer = timeline.layers[li];
-        for (auto& f : layer.frames)
+        auto& layer = timeline.Layers[li];
+        for (auto& f : layer.Frames)
         {
-            if (frame < f.index || frame >= f.index + f.duration)
+            if (frame < f.Index || frame >= f.Index + f.Duration)
                 continue;
 
-            for (auto& e : f.elements)
+            for (auto& e : f.Elements)
             {
                 float cosR = cosf(parentRot);
                 float sinR = sinf(parentRot);
-                float lx   = e.position.x * parentScale.x;
-                float ly   = e.position.y * parentScale.y;
+                float lx   = e.Position.x * parentScale.x;
+                float ly   = e.Position.y * parentScale.y;
 
                 Vec2 pos = {
                     parentPos.x + cosR * lx - sinR * ly,
                     parentPos.y + sinR * lx + cosR * ly
                 };
 
-                float rot  = parentRot + e.rotation;
-                Vec2 scale = { parentScale.x * e.scale.x, parentScale.y * e.scale.y };
+                float rot  = parentRot + e.Rotation;
+                Vec2 scale = { parentScale.x * e.Scale.x, parentScale.y * e.Scale.y };
 
-                if (!e.spriteName.empty())
+                if (!e.SpriteName.empty())
                 {
-                    drawSprite(e.spriteName, img, atlas,
-                        pos, rot, scale, e.pivot, e.bitmapOff);
+                    DrawSprite(e.SpriteName, img, atlas,
+                        pos, rot, scale, e.Pivot, e.BitmapOff);
                 }
 
-                if (!e.symbolName.empty() && symbols.count(e.symbolName))
+                if (!e.SymbolName.empty() && Symbols.count(e.SymbolName))
                 {
-                    auto& sym = symbols[e.symbolName];
+                    auto& sym = Symbols[e.SymbolName];
 
                     int symFrame;
-                    if (e.isGraphic)
-                        symFrame = e.firstFrame % (sym.totalFrames > 0 ? sym.totalFrames : 1);
+                    if (e.IsGraphic)
+                        symFrame = e.FirstFrame % (sym.TotalFrames > 0 ? sym.TotalFrames : 1);
                     else
-                        symFrame = frame % (sym.totalFrames > 0 ? sym.totalFrames : 1);
+                        symFrame = frame % (sym.TotalFrames > 0 ? sym.TotalFrames : 1);
 
-                    drawTimeline(sym, img, atlas, pos, rot, scale, symFrame);
+                    DrawAnim(sym, img, atlas, pos, rot, scale, symFrame);
                 }
             }
         }
