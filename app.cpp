@@ -1,10 +1,10 @@
 
 #include "AbsolutEngine.h"
 #include "Src/UI.h"
-#include <GL/gl.h>
+
 #include <cstdio>
 #include <algorithm>
-#include <windows.h>
+#include "Src/Timer.h"
 
 #include "DrawHelpers.h"
 #include "Player.h"
@@ -12,11 +12,14 @@
 
 int main()
 {
+    CountdownTimer lasted(10.0f);
+      CountdownTimer serverEnd(30.0f + lasted.getSecondsLeft());
+
     Window window;
     if (!window.create("RubberBandBattle-Shell", 1280, 720))
         return -1;
 
-
+    std::string username = "database";
 
     Camera main_cam;
     main_cam.position = {0.0f, 0.0f};
@@ -28,7 +31,7 @@ int main()
     float fpsTimer = 0.0f, currentFPS = 0.0f;
     int   fpsFrames = 0;
 #endif
-
+    lasted.update();
     Player player;
     // Init assets
      UI::_font::load("Resources/Font/Confale.ttf");
@@ -104,20 +107,56 @@ float screenY = (player.y - main_cam.position.y + -300) * main_cam.zoom + sh * 0
         // ======================================================
         applyScreenSpace(sw, sh);
         UI::BeginFrame(sw, sh);
+        if (lasted.finished()){
+    player.canMove = false;
+
+ }
+ if (lasted.finished()){
+      serverEnd.update();
+ }
+ if (lasted.getSecondsLeft() >= 1){
+    UI::Label(std::to_string(lasted.getSecondsLeft()) + " Seconds left",
+          640.0f,
+          640.0f,
+          2.0f,
+          1.0f,
+          1.0f,
+          0.0f);
+ }
+ else {
+     UI::Label(std::to_string(serverEnd.getSecondsLeft()) + " seconds before game closes",
+                 640.0f,
+          640.0f,
+          2.0f,
+          1.0f,
+          0.0f,
+          0.0f);
+
+   if (serverEnd.finished()){
+
+    DestroySound(bgm);
+    DestroyAnimator(player.anim); DestroySprite(player.sprite);
+    DestroySprite(bg);
+    FreeAtlas(playeratlas);       PL_FreeImage(playersheet);
+    return -1;
+   }
+
+ }
+
 #ifdef _DEBUG
         {
             char fpsText[32];
             snprintf(fpsText, sizeof(fpsText), "FPS  %.1f", currentFPS);
-            UI::Label(fpsText, (float)sw - UI::_font::textWidth(fpsText, 2.0f) - 14.0f, 18.0f,
-                      2.0f, 0.3f, 1.0f, 0.3f);
+            UI::Label(fpsText, (float)sw - UI::_font::textWidth(fpsText, 2.0f) - 24.0f, 30.0f,
+                      sw / 500, 0.3f, 1.0f, 0.3f);
         }
 #endif
         // Stamina bar
-        UI::Label("Player",
-          screenX - UI::_font::textWidth("Player", 1.0f) * 0.5f,
+        UI::Label(username,
+          screenX - UI::_font::textWidth(username, 2.0f) * 0.5f,
           screenY - 30.0f,
-          2.0f,
-          1.0f, 1.0f, 0.0f);
+          4.0f,
+          0.0f,  0.0f, 0.0f);
         {
             float stFill = std::max(0.0f, std::min(player.stamina / Player::MAX_STAMINA, 1.0f));
 
@@ -139,10 +178,16 @@ UI::Label(std::to_string((float)player.playerHealth), bx, by, 2.0f,
           sr, player.playerHealth <= 20.0f ? 0.2f : 0.85f, 0.1f, 1.0f);
 
         }
+            lasted.update();
 
- UI::Label("Use WASD or arrow keys to move player. Shift to sprint. T to diminish health",0.0f,20.0f ,sw / 500,0.0f, 0.0f, 0.0f);
+
+           //Label(const std::string& text,float x, float y,float scale = 2.0f,float r = 1, float g = 1, float b = 1, float a = 1)
+ UI::Label("Use WASD or arrow keys to move player. Shift to sprint. T to diminish health",0.0f,40.0f ,sw / 500,0.0f, 0.0f, 0.0f);
+
+
         UI::EndFrame();
         PL_Present(&window);
+
     }
 
     DestroySound(bgm);

@@ -35,6 +35,12 @@ void Player::applyAnimationState(bool moving, bool canRun)
         Anim(anim, PLAYER, RUN);
         lastAnimState = State::RUN;
     }
+
+    if (playerHealth < playerHealth)
+    {
+        Anim(anim, PLAYER, HURT);
+        lastAnimState = State::HURT;
+    }
     else if (moving && !canRun && lastAnimState != State::WALK)
     {
         Anim(anim, PLAYER, WALK);
@@ -120,7 +126,7 @@ Player::FrameEvents Player::update(float dt, const Input& input, const AABB& wal
 {
     FrameEvents events;
 
-       if (playerHealth  <= 0  )
+       if (playerHealth  <= 0)
     {
         canMove = false;
        if (lastAnimState != State::DIE)
@@ -132,7 +138,7 @@ Player::FrameEvents Player::update(float dt, const Input& input, const AABB& wal
 
     }
     else {
-          canMove = true;
+
     }
 
 

@@ -14,13 +14,13 @@ class Window;
 // ============================================================
 struct Player
 {
-    enum class State { IDLE, WALK, RUN, JUMP, DIE };
+    enum class State { IDLE, WALK, SWIM, JUMP, DIE, RUN,HURT,SHOOT,SHOOT_RUN, SLIDE,PUNCH};
 float  playerHealth = 100;
 bool canMove = true;
     float x = 0.0f, y = 0.0f;
     float w = 100.0f, h = 200.0f;
-    float minY = 0.0f, maxY = 500.0f;
-    float minX = 100.0f, maxX = 2500.0f;
+    float minY = 0.0f, maxY = 700.0f;
+    float minX = 0.0f, maxX = 2500.0f;
     float baseY = 0.0f;
 
     // ---- Physics ----
