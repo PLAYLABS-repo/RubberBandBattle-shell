@@ -22,14 +22,19 @@ bool canMove = true;
     float minY = 0.0f, maxY = 700.0f;
     float minX = 0.0f, maxX = 2500.0f;
     float baseY = 0.0f;
-
+    std::string username;
     // ---- Physics ----
     float velocityY = 0.0f;
     float gravity   = 2000.0f;
     float jumpForce =  -800.0f;
     float speed     =  300.0f;
     bool  jumping   = false;
+   Image* playersheet  ;
+    Atlas* playeratlas  ;
+    Animator* anim  ;
 
+
+    Vec2 position;
 
     float facingX = 1.0f;
 
@@ -43,7 +48,7 @@ bool canMove = true;
 
     // ---- Animation / visuals ----
     State     lastAnimState = State::IDLE;
-    Animator* anim = nullptr;
+
     Sprite*   sprite = nullptr;
 
     // ---- Per-frame input snapshot; main() fills this in from KeyDown/KeyPressed ----

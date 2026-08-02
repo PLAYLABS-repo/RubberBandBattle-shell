@@ -1,6 +1,7 @@
 
 #include "AbsolutEngine.h"
-#include "Src/UI.h"
+
+#include "GameLogic/Initialize.h"
 
 #include <cstdio>
 #include <algorithm>
@@ -12,15 +13,14 @@
 
 int main()
 {
-    CountdownTimer lasted(10.0f);
-      CountdownTimer serverEnd(30.0f + lasted.getSecondsLeft());
+    CountdownTimer lasted(5.0f);
+      CountdownTimer serverEnd(5.0f + lasted.getSecondsLeft());
 
     Window window;
-    if (!window.create("RubberBandBattle-Shell", 1280, 720))
-        return -1;
+    window.create("RubberBandBattle-Shell", 1280, 720);
 
-    std::string username = "database";
 
+    std::string username = "Build 8.2.26 Initializer test";
     Camera main_cam;
     main_cam.position = {0.0f, 0.0f};
     main_cam.zoom     = 1.723f;
@@ -32,8 +32,11 @@ int main()
     int   fpsFrames = 0;
 #endif
     lasted.update();
-    Player player;
-    // Init assets
+        Player player;
+            Image* ground =PL_LoadImage("Resources/Texture/BGDebug.png");
+ PlayerInit(player, "Resources/Skins/spritemap.png" ,"Resources/Skins/spritemap.json" , "Resources/Skins/Animation.json", Vec2(0,0));
+
+    /* Init assets
      UI::_font::load("Resources/Font/Confale.ttf");
     Image* playersheet = PL_LoadImage("Resources/Skins/spritemap.png");
     Atlas* playeratlas = LoadAtlas("Resources/Skins/spritemap.json");
@@ -48,7 +51,7 @@ int main()
     player.sprite->position       = {player.x, player.y};
     player.sprite->targetPosition = {player.x, player.y};
     player.sprite->scale          = {1.0f, 1.0f};
-
+*/
 
     Anim(player.anim, PLAYER, IDLE);
     Sound* bgm =  CreateSound();
@@ -99,7 +102,7 @@ int main()
         bg->update(dt); bg->draw(main_cam);
 
         player.sprite->update(dt); player.sprite->draw(main_cam);
-        TickAnimator(player.anim, dt, playersheet, playeratlas, &main_cam);
+        TickAnimator(player.anim, dt, player.playersheet, player.playeratlas, &main_cam);
 float screenX = (player.x - main_cam.position.x - 580) * main_cam.zoom + sw * 0.5f;
 float screenY = (player.y - main_cam.position.y + -300) * main_cam.zoom + sh * 0.5f;
         // ======================================================
@@ -116,29 +119,25 @@ float screenY = (player.y - main_cam.position.y + -300) * main_cam.zoom + sh * 0
  }
  if (lasted.getSecondsLeft() >= 1){
     UI::Label(std::to_string(lasted.getSecondsLeft()) + " Seconds left",
-          640.0f,
-          640.0f,
-          2.0f,
+          sw/2.5,
+          100.0f,
+          4.0f,
           1.0f,
           1.0f,
           0.0f);
  }
  else {
      UI::Label(std::to_string(serverEnd.getSecondsLeft()) + " seconds before game closes",
-                 640.0f,
-          640.0f,
-          2.0f,
+          sw/3,
+          100.0f,
+          4.0f,
           1.0f,
           0.0f,
           0.0f);
 
    if (serverEnd.finished()){
 
-    DestroySound(bgm);
-    DestroyAnimator(player.anim); DestroySprite(player.sprite);
-    DestroySprite(bg);
-    FreeAtlas(playeratlas);       PL_FreeImage(playersheet);
-    return -1;
+    goto destroyitems;
    }
 
  }
@@ -171,9 +170,7 @@ float screenY = (player.y - main_cam.position.y + -300) * main_cam.zoom + sh * 0
                       sr, player.staminaExhausted ? 0.2f : 0.85f, 0.1f, 1.0f);
             UI::ProgressBar(stFill, bx, by + 16.0f, barW, barH,
                             sr, sg, sb, 0.15f, 0.15f, 0.15f);
-                             UI::Label("Stamina", bx, by, 2.0f,sr, player.staminaExhausted ? 0.2f : 0.85f, 0.1f, 1.0f);
-UI::Label(std::to_string((float)player.playerHealth), bx, by, 2.0f,
-          sr, player.playerHealth <= 20.0f ? 0.2f : 0.85f, 0.1f, 1.0f);
+
           UI::Label(std::to_string((int)player.playerHealth), bx, by - 40, 2.0f,
           sr, player.playerHealth <= 20.0f ? 0.2f : 0.85f, 0.1f, 1.0f);
 
@@ -189,10 +186,11 @@ UI::Label(std::to_string((float)player.playerHealth), bx, by, 2.0f,
         PL_Present(&window);
 
     }
-
+    destroyitems:
     DestroySound(bgm);
     DestroyAnimator(player.anim); DestroySprite(player.sprite);
     DestroySprite(bg);
-    FreeAtlas(playeratlas);       PL_FreeImage(playersheet);
+    FreeAtlas(player.playeratlas);
+     PL_FreeImage(player.playersheet);
     return 0;
 }

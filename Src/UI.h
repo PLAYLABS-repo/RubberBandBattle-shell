@@ -20,7 +20,7 @@
 //
 //   UI::EndFrame();
 // =============================================================
-#define STB_TRUETYPE_IMPLEMENTATION
+
 #include <GL/gl.h>
 #include <string>
 #include <vector>
@@ -30,7 +30,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdarg>
-
+#define STB_TRUETYPE_IMPLEMENTATION
 #include "AbsolutEngine.h"   // EventBus, EventData, Image, MousePos, KeyDown …
 #include "include/stb_truetype.h"
 
