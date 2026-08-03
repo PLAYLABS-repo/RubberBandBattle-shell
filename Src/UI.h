@@ -1,25 +1,5 @@
 #pragma once
-// =============================================================
-// PlaylabsUI — Immediate-mode UI layer for PlaylabsGL
-// OpenGL 1.1 compatible — no shaders, no VAOs, no VBOs.
-//
-// Usage:
-//   #include "Src/UI.h"
-//
-//   // ONE-TIME setup after OpenGL context is ready:
-//   UI::_font::load("Resources/Font/Confale.ttf");
-//
-//   // Inside your game loop:
-//   UI::BeginFrame(screenW, screenH);
-//
-//   if (UI::Button("Play", 100, 200, 160, 48))
-//       Event("ui_clicked", nullptr, (void*)"Play");
-//
-//   UI::Label("Score: 99", 20, 20);
-//   UI::Image(myImage, 300, 100, 64, 64);
-//
-//   UI::EndFrame();
-// =============================================================
+
 
 #include <GL/gl.h>
 #include <string>
@@ -31,17 +11,11 @@
 #include <cstdio>
 #include <cstdarg>
 #define STB_TRUETYPE_IMPLEMENTATION
-#include "AbsolutEngine.h"   // EventBus, EventData, Image, MousePos, KeyDown …
+#include "AbsolutEngine.h"
 #include "include/stb_truetype.h"
 
-// ─────────────────────────────────────────────────────────────
-// Forward declarations (defined at the bottom of this file)
-// ─────────────────────────────────────────────────────────────
 namespace UI { struct Style; }
 
-// =============================================================
-// UIRect  — axis-aligned rectangle helper (local, no AABB dep.)
-// =============================================================
 struct UIRect
 {
     float x, y, w, h;
@@ -51,9 +25,6 @@ struct UIRect
     }
 };
 
-// =============================================================
-// NineSlice — 9-slice scaling support for images
-// =============================================================
 struct NineSlice
 {
     float left, right, top, bottom;  // border sizes (in pixels)
@@ -341,6 +312,23 @@ namespace UI
     //   _font::textHeight(scale)     — pixel height
     //   _font::drawText(str,x,y,scale,r,g,b,a)
     //   _font::drawChar(ch,x,y,scale,r,g,b,a)
+    //
+    // FIXES vs. original:
+    //   1) Atlas bitmap is now zero-initialized and large enough
+    //      (1024x1024) to hold 96 glyphs baked at typical sizes;
+    //      stbtt_BakeFontBitmap's return value is checked so a
+    //      bake overflow fails loudly instead of reading garbage
+    //      heap memory back as "glyph coverage" (this was the
+    //      cause of every glyph rendering as a solid rectangle).
+    //   2) Texture upload switched from GL_ALPHA to
+    //      GL_LUMINANCE_ALPHA (luminance forced to 255). Under
+    //      default GL_MODULATE texture env, a GL_ALPHA texture's
+    //      implicit RGB of (0,0,0) multiplies the vertex color's
+    //      RGB to zero, which (once the atlas bug is fixed) makes
+    //      text render solid black regardless of the requested
+    //      tint. GL_LUMINANCE_ALPHA with luminance=255 lets the
+    //      vertex color pass through untouched and only modulates
+    //      alpha by glyph coverage, as intended.
     // ───────────────────────────────────────────────────────────
     namespace _font
     {
@@ -365,6 +353,12 @@ namespace UI
             static bool v = false;
             return v;
         }
+        // Atlas dimensions — must stay in sync with the size used
+        // in stbtt_BakeFontBitmap() below AND every call to
+        // stbtt_GetBakedQuad() (textWidth/textHeight/drawText all
+        // pass these in rather than hardcoding 512,512).
+        inline int& _atlasW() { static int w = 1024; return w; }
+        inline int& _atlasH() { static int h = 1024; return h; }
 
         // ---- Load TTF from disk and bake into a GL texture ----
         // Call once after the OpenGL context is created.
@@ -382,31 +376,73 @@ namespace UI
             rewind(f);
 
             unsigned char* buf = new unsigned char[sz];
-            fread(buf, 1, sz, f);
+            size_t readBytes = fread(buf, 1, sz, f);
             fclose(f);
+            if (readBytes != (size_t)sz)
+            {
+                fprintf(stderr, "[UI::_font] Short read on %s\n", path);
+                delete[] buf;
+                return false;
+            }
 
-            const int BMAP_W = 512, BMAP_H = 512;
-            unsigned char* bitmap = new unsigned char[BMAP_W * BMAP_H];
+            const int BMAP_W = _atlasW();
+            const int BMAP_H = _atlasH();
+            // FIX: value-initialize ( () ) so the atlas starts as
+            // all zeros instead of uninitialized heap garbage.
+            // Any texel stb_truetype doesn't write to (e.g. due to
+            // a partial/overflowed bake) must read back as "no
+            // coverage", not "whatever byte happened to be there".
+            unsigned char* bitmap = new unsigned char[BMAP_W * BMAP_H]();
 
             _bakeSize() = bakeH;
-            stbtt_BakeFontBitmap(buf, 0, bakeH,
+            int bakeResult = stbtt_BakeFontBitmap(buf, 0, bakeH,
                                  bitmap, BMAP_W, BMAP_H,
                                  32, 96, _charData());
 
             delete[] buf;
 
-            // Upload as GL_ALPHA texture so colour tint works naturally
+            // FIX: stbtt_BakeFontBitmap returns <= 0 (0 or negative
+            // "ran out of room" code) on failure/overflow. The
+            // original code never checked this, so an atlas that
+            // was too small silently produced corrupt/garbage
+            // glyph data -> every character rendered as a solid,
+            // differently-sized rectangle.
+            if (bakeResult <= 0)
+            {
+                fprintf(stderr,
+                    "[UI::_font] stbtt_BakeFontBitmap failed/overflowed "
+                    "(result=%d) — atlas %dx%d too small for bakeH=%.1f. "
+                    "Increase _atlasW()/_atlasH() or lower bakeH.\n",
+                    bakeResult, BMAP_W, BMAP_H, bakeH);
+                delete[] bitmap;
+                return false;
+            }
+
+            // FIX: ensure tight row alignment regardless of BMAP_W,
+            // and build a LUMINANCE_ALPHA buffer so GL_MODULATE
+            // (the default texture env) doesn't zero out the
+            // vertex tint color via the texture's RGB channels.
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+            unsigned char* la = new unsigned char[BMAP_W * BMAP_H * 2];
+            for (int i = 0; i < BMAP_W * BMAP_H; ++i)
+            {
+                la[i*2 + 0] = 255;        // luminance = full white
+                la[i*2 + 1] = bitmap[i];  // alpha = glyph coverage
+            }
+            delete[] bitmap;
+
             if (_tex()) glDeleteTextures(1, &_tex());
             glGenTextures(1, &_tex());
             glBindTexture(GL_TEXTURE_2D, _tex());
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA,
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE_ALPHA,
                          BMAP_W, BMAP_H, 0,
-                         GL_ALPHA, GL_UNSIGNED_BYTE, bitmap);
+                         GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE, la);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             glBindTexture(GL_TEXTURE_2D, 0);
 
-            delete[] bitmap;
+            delete[] la;
 
             _loaded() = true;
             return true;
@@ -434,7 +470,7 @@ namespace UI
                 if (c < 32 || c > 127) continue;
                 float tmpX = 0, tmpY = 0;
                 stbtt_aligned_quad q;
-                stbtt_GetBakedQuad(_charData(), 512, 512,
+                stbtt_GetBakedQuad(_charData(), _atlasW(), _atlasH(),
                                    c - 32, &tmpX, &tmpY, &q, 1);
                 pen += tmpX;
             }
@@ -556,7 +592,7 @@ namespace UI
                 // Query stbtt for glyph bounds & advance at bake origin=0
                 float tmpX = 0.0f, tmpY = 0.0f;
                 stbtt_aligned_quad q;
-                stbtt_GetBakedQuad(_charData(), 512, 512,
+                stbtt_GetBakedQuad(_charData(), _atlasW(), _atlasH(),
                                    c - 32, &tmpX, &tmpY, &q, 1);
                 // tmpX = advance (unscaled); q.x0/x1/y0/y1 relative to pen=0
 

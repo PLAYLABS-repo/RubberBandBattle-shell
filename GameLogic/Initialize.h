@@ -2,7 +2,7 @@
 #include "Src/UI.h"
 
 #include <cstdio>
-#define STB_TRUETYPE_IMPLEMENTATION
+
 #include <stdio.h>
 #include <algorithm>
 #include "Src/Timer.h"
@@ -41,26 +41,12 @@ player.playersheet = PL_LoadImage(PlayerImageDir.c_str());
 player.playeratlas = LoadAtlas(PlayerAtlasDir.c_str());
 
 
-if(player.playersheet == nullptr)
-{
-    printf("FAILED TO LOAD PLAYER IMAGE\n");
-}
-else
-{
-    printf("PLAYER IMAGE LOADED\n");
-}
-
-if(player.playeratlas == nullptr)
-{
-    printf("FAILED TO LOAD PLAYER ATLAS\n");
-}
-else
-{
-    printf("BULLSHIT\n");
-}
 
 
-
+}
+void InitializeUI(){
+    // if (!UI::_font::load("Resources/Font/Confale.ttf"))
+  //  printf("Failed to load font!\n");
 }
 /*
    CountdownTimer lasted(5.0f);

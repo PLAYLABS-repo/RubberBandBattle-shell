@@ -2,23 +2,26 @@
 #include "AbsolutEngine.h"
 
 #include "GameLogic/Initialize.h"
-
+#define STB_TRUETYPE_IMPLEMENTATION
 #include <cstdio>
 #include <algorithm>
 #include "Src/Timer.h"
-
+#include "Src/UI.h"
 #include "DrawHelpers.h"
 #include "Player.h"
-// Build 0.0.19
+// Build 8.3.26
+
 
 int main()
 {
-    CountdownTimer lasted(5.0f);
-      CountdownTimer serverEnd(5.0f + lasted.getSecondsLeft());
+
+    InitializeUI();
+    CountdownTimer lasted(10.0f);
+    CountdownTimer serverEnd(10.0f);
 
     Window window;
     window.create("RubberBandBattle-Shell", 1280, 720);
-
+UI::_font::load("Resources/Font/Confale.ttf");
 
     std::string username = "Build 8.2.26 Initializer test";
     Camera main_cam;
@@ -72,7 +75,7 @@ int main()
 
         float dt = timer.delta();
         if (dt > 0.05f) dt = 0.05f;
-        Sleep(10);
+
 
 #ifdef _DEBUG
         fpsTimer += dt; ++fpsFrames;
@@ -111,12 +114,13 @@ float screenY = (player.y - main_cam.position.y + -300) * main_cam.zoom + sh * 0
         applyScreenSpace(sw, sh);
         UI::BeginFrame(sw, sh);
         if (lasted.finished()){
-    player.canMove = false;
 
- }
- if (lasted.finished()){
-      serverEnd.update();
- }
+    player.canMove = false;
+    serverEnd.update();
+
+}
+
+
  if (lasted.getSecondsLeft() >= 1){
     UI::Label(std::to_string(lasted.getSecondsLeft()) + " Seconds left",
           sw/2.5,
