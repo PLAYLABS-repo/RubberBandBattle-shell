@@ -48,6 +48,7 @@ void InitializeUI(){
     // if (!UI::_font::load("Resources/Font/Confale.ttf"))
   //  printf("Failed to load font!\n");
 }
+
 /*
    CountdownTimer lasted(5.0f);
       CountdownTimer serverEnd(5.0f + lasted.getSecondsLeft());

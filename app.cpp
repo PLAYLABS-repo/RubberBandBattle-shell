@@ -9,6 +9,7 @@
 #include "Src/UI.h"
 #include "DrawHelpers.h"
 #include "Player.h"
+#include <stdio.h>
 // Build 8.3.26
 
 
@@ -86,6 +87,7 @@ UI::_font::load("Resources/Font/Confale.ttf");
         }
 #endif
 
+
         Player::Input in = Player::gatherInput(window);
         int sw = window.getWidth(), sh = window.getHeight();
 
@@ -106,20 +108,26 @@ UI::_font::load("Resources/Font/Confale.ttf");
 
         player.sprite->update(dt); player.sprite->draw(main_cam);
         TickAnimator(player.anim, dt, player.playersheet, player.playeratlas, &main_cam);
-float screenX = (player.x - main_cam.position.x - 580) * main_cam.zoom + sw * 0.5f;
+        float screenX = (player.x - main_cam.position.x - 580) * main_cam.zoom + sw * 0.5f;
 float screenY = (player.y - main_cam.position.y + -300) * main_cam.zoom + sh * 0.5f;
         // ======================================================
         // RENDER — HUD
         // ======================================================
         applyScreenSpace(sw, sh);
         UI::BeginFrame(sw, sh);
-        if (lasted.finished()){
 
+ lasted.update();
+
+
+// ... in the loop ...
+if (lasted.finished()) {
     player.canMove = false;
+
     serverEnd.update();
-
 }
-
+else{
+serverEnd.start(10.0f);
+}
 
  if (lasted.getSecondsLeft() >= 1){
     UI::Label(std::to_string(lasted.getSecondsLeft()) + " Seconds left",
@@ -138,12 +146,6 @@ float screenY = (player.y - main_cam.position.y + -300) * main_cam.zoom + sh * 0
           1.0f,
           0.0f,
           0.0f);
-
-   if (serverEnd.finished()){
-
-    goto destroyitems;
-   }
-
  }
 
 #ifdef _DEBUG
@@ -179,9 +181,12 @@ float screenY = (player.y - main_cam.position.y + -300) * main_cam.zoom + sh * 0
           sr, player.playerHealth <= 20.0f ? 0.2f : 0.85f, 0.1f, 1.0f);
 
         }
-            lasted.update();
 
 
+
+ if (serverEnd.finished()){
+    break;
+ }
            //Label(const std::string& text,float x, float y,float scale = 2.0f,float r = 1, float g = 1, float b = 1, float a = 1)
  UI::Label("Use WASD or arrow keys to move player. Shift to sprint. T to diminish health",0.0f,40.0f ,sw / 500,0.0f, 0.0f, 0.0f);
 
@@ -190,7 +195,7 @@ float screenY = (player.y - main_cam.position.y + -300) * main_cam.zoom + sh * 0
         PL_Present(&window);
 
     }
-    destroyitems:
+
     DestroySound(bgm);
     DestroyAnimator(player.anim); DestroySprite(player.sprite);
     DestroySprite(bg);
@@ -198,3 +203,4 @@ float screenY = (player.y - main_cam.position.y + -300) * main_cam.zoom + sh * 0
      PL_FreeImage(player.playersheet);
     return 0;
 }
+

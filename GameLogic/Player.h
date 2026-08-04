@@ -23,7 +23,7 @@ bool canMove = true;
     float minX = 0.0f, maxX = 2500.0f;
     float baseY = 0.0f;
     std::string username;
-    // ---- Physics ----
+
     float velocityY = 0.0f;
     float gravity   = 2000.0f;
     float jumpForce =  -800.0f;
